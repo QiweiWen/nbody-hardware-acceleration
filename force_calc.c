@@ -195,6 +195,7 @@ void calculate_force (otree_t* root,otree_t* node){
 
 #ifdef HWACCL
 extern size_t ilist_stats[NUM_PROCESSORS];
+extern size_t ilist_stats_len [NUM_PROCESSORS];
 static size_t hwaccl_make_ilist (uint16_t tid, otree_t* currnode, otree_t* target){
 	size_t res = 0;
 	if (currnode == target) return 0;
@@ -224,7 +225,11 @@ void hwaccl_calculate_force (uint16_t tid, otree_t* root, otree_t* node){
 		
 		write_target (tid, &node->centre_of_mass);		
 		size_t ilistlen = hwaccl_make_ilist (tid, root, node);
-		ilist_stats [tid] = ilistlen;	
+		
+		ilist_stats_len [tid] ++;
+		ilist_stats [tid] = (ilist_stats[tid]* (ilist_stats_len[tid] - 1) + ilistlen)/ilist_stats_len[tid];	
+		
+				
 		flush_to_dma (tid);
 		vector_t force = read_result (tid);
 	//	print_vector (&force);	

@@ -177,5 +177,5 @@ void update_ilist_len (size_t newlen){
 	elements_per_write = newlen / 10;
 	if (elements_per_write == 0) elements_per_write = 1;
 	assert (elements_per_write < RAMBUFF_SIZE/BUFFER_ENTRY_SIZE);  
-	dbprintf ("NEW PARTS PER WRITE: %hu\n", elements_per_write);
+
 }

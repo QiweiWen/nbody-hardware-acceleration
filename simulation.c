@@ -81,6 +81,7 @@ static void thread_init (int ts_years, int ts_days, int ts_secs, int anim, FILE*
 
 #ifdef HWACCL
 size_t ilist_stats [NUM_PROCESSORS];
+size_t ilist_stats_len [NUM_PROCESSORS];
 #endif
 
 static inline int cmp_int (int a, int b){
@@ -201,6 +202,8 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 		uint32_t ilistlen_sum = 0;
 		for (int i = 0; i < NUM_PROCESSORS; ++i){	
 			ilistlen_sum += ilist_stats [i];
+			ilist_stats [i] = 0;
+			ilist_stats_len [i] = 0;
 		}
 		ilistlen_sum /= NUM_PROCESSORS;
 		update_ilist_len (ilistlen_sum);
