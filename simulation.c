@@ -257,6 +257,7 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim, int lo
 			
 		}else{		
 			particle = malloc (sizeof(pmass_t));
+			
 			sscanf (heapbuf, "("FFMT"," FFMT"," FFMT"," FFMT")",
 					&particle->pos.x, &particle->pos.y,
 					&particle->pos.z, &particle->mass);	
