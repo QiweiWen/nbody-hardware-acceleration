@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <errno.h>
 
 static uint16_t elements_per_write = 200;
 static char* bytebuffers [NUM_PROCESSORS];
@@ -74,6 +75,9 @@ vector_t read_result (uint16_t tid){
 		while (bytes_left){
 			bytes_read = read (fd, buffer_pointer,bytes_left); 
 			if (bytes_read < 0) {
+				int err = errno;
+				if (errno == EINTR) continue;
+				printf ("%s\n", strerror (errno));
 				assert (!"error while reading\n");
 			}else{
 				bytes_left -= bytes_read;
