@@ -84,8 +84,9 @@ int main (int argc, char** argv){
 	char* filename;
 	int fileflag = 0;
 
-	char c;
-	while ((c = getopt (argc, argv, "y:d:s:f:")) != -1)
+	int c;
+	int logtime = 0;
+	while ((c = getopt (argc, argv, "y:d:s:f:l")) != -1)
 		switch (c)
 		{
 			case 's':
@@ -107,8 +108,11 @@ int main (int argc, char** argv){
 			case 'h':
 				print_help();
 			break;
+			case 'l':
+				logtime = 1;
+			break;
 			case '?':
-				if (optopt == 's' || optopt == 'y' || optopt == 'd' || optopt == 'f')
+				if (optopt == 'l' || optopt == 's' || optopt == 'y' || optopt == 'd' || optopt == 'f')
 					fprintf (stderr, "Option -%c requires an argument.\n", optopt);
 				else if (isprint (optopt))
 					fprintf (stderr, "Unknown option `-%c'.\n", optopt);
@@ -118,7 +122,10 @@ int main (int argc, char** argv){
 							optopt);
 			return 1;
 		  default:
-			abort ();
+			{
+				printf ("%d\n", c);
+				abort ();
+			}
 		}
 	if (timearg_count == 0){
 		print_help();
@@ -135,7 +142,7 @@ int main (int argc, char** argv){
 	}
 	if (animflag){
 #ifndef ANIM
-		#error "the --anim flag needs the optioned \"ANIM\" enabled in config.h"
+		assert(!"the --anim flag needs the optioned \"ANIM\" enabled in config.h");
 #endif
 	}
 	//re-format the input time
@@ -146,7 +153,7 @@ int main (int argc, char** argv){
 	years += (days / DAYS_IN_YEAR);	
 	days = days % DAYS_IN_YEAR;
 	
-	simulation (years, days, seconds, infile, animflag);	
+	simulation (years, days, seconds, infile, animflag, logtime);	
 
 	return 0;
 }

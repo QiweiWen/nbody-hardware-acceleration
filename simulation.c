@@ -106,6 +106,7 @@ static int done (int tgt_yr, int tgt_d, int  tgt_s,
 
 static inline void do_integration (pmass_t* particle, uint64_t total_seconds){
 	point_t added = particle->acc;
+	//print_vector (&particle->acc);
 	point_t old_vel = particle->vel;
 	//scale the acceleration to add
 	added . x *= total_seconds;
@@ -122,6 +123,8 @@ static inline void do_integration (pmass_t* particle, uint64_t total_seconds){
 	added . y *= total_seconds;
 	added . z *= total_seconds;
 	
+
+
 	vector_add (&particle->pos, &added);
 }
 
@@ -149,7 +152,7 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 		curr = node->particles->first;
 		while (dump && curr){				
 			the_particle = (pmass_t*)curr->key;
-			fprintf (ofile, "(%.16lf, %.16lf, %.16lf)\n", 
+			fprintf (ofile, "(%.10lf, %.10lf, %.10lf)\n", 
 						the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
 
 			curr = curr->next;
@@ -161,7 +164,7 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 	}
 }
 
-static void run_simulation (int years, int days, int seconds, otree_t* root, int anim){
+static void run_simulation (int years, int days, int seconds, otree_t* root, int anim, int log){
 	int ts_years, ts_days, ts_secs;
 	sscanf (TIMESTEP, "%dy%dd%ds", &ts_years, &ts_days, &ts_secs);
 	assert (ts_secs < SECS_IN_DAY && ts_days < DAYS_IN_YEAR);
@@ -207,10 +210,12 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 		if (anim && !(cycles % CYCLES_PER_WRITE)){
 			doprint = 1;
 			fprintf(ofile, "====\n");
-			fprintf(ofile, "time %dy%dd%ds\n", curr_years, curr_days, curr_secs);
+			fprintf(ofile, "time %dy%dd%ds\n", curr_years, curr_days, curr_secs);		
 		}
 #endif
-
+		if (log && !(cycles % CYCLES_PER_WRITE)){
+			fprintf(stdout, "time %dy%dd%ds\n", curr_years, curr_days, curr_secs);
+		}	
 		integrate (root, ts_years, ts_days, ts_secs, doprint, ofile);
 		if (doprint) doprint = 0;
 		//add the time step to the current time	
@@ -234,7 +239,7 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 	}	
 }
 
-void simulation (int years, int days, int seconds,FILE* infile, int anim){
+void simulation (int years, int days, int seconds,FILE* infile, int anim, int log){
 	
 	//get the input
 	char* heapbuf = malloc(sizeof(char) * 200);
@@ -250,9 +255,7 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 			sscanf (heapbuf,FFMT,&universe_size);
 			the_tree = otree_new (universe_size);
 			
-		}else{
-			//the format string for the float type
-			//doesnt matter for output, but does for input
+		}else{		
 			particle = malloc (sizeof(pmass_t));
 			sscanf (heapbuf, "("FFMT"," FFMT"," FFMT"," FFMT")",
 					&particle->pos.x, &particle->pos.y,
@@ -263,6 +266,6 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 		++linenum;
 	}
 	free (heapbuf);
-	run_simulation (years, days, seconds, the_tree, anim);
+	run_simulation (years, days, seconds, the_tree, anim, log);
 }
 

@@ -8,7 +8,7 @@
 //interaction list elements before dumping it to the devfile
 //1MB is much more than enough but WTH
 #define RAMBUFF_SIZE (1<<20)
-#define NUM_PIPELINES_PER_CPU 2
+#define NUM_PIPELINES_PER_CPU 1
 #define BUFFER_ENTRY_SIZE 16 
 #define CACHELINESIZE 64
 //for a CPU to have potentially more pipeline units than one

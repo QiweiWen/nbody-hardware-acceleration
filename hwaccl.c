@@ -16,10 +16,10 @@ static uint16_t currindexes [NUM_PROCESSORS];
 static tcb_t threads [NUM_PROCESSORS];
 
 static const char* writing_streams[NUM_PROCESSORS][NUM_PIPELINES_PER_CPU]
-= {{"cpu0_ofile0", "cpu0_ofile1"}, {"cpu1_ofile0", "cpu1_ofile1"}};
+= {{"/dev/xillybus_write_32"}};
 
 static const char* reading_streams[NUM_PROCESSORS][NUM_PIPELINES_PER_CPU]
-= {{"cpu0_ifile0", "cpu0_ifile1"}, {"cpu1_ifile0", "cpu1_ifile1"}};
+= {{"/dev/xillybus_read_32"}};
 
 void open_streams (uint16_t tid, int reading, int writing){
 	tcb_t* tcb  = &threads [tid];
@@ -39,18 +39,20 @@ void hwaccl_init (void){
 		buffers [i] = (float*)bytebuffers [i];
 		currindexes [i] = 0;
 		threads [i].stream_index = 0;;	
-		open_streams (i, 1, 0);
+		open_streams (i, 1, 1);
 	}
 }
 
 
 void write_target (uint16_t tid, pmass_t* tgt){
-	open_streams (tid, 0, 1);
+	
 	tcb_t* tcb = &threads [tid];
 	float buff[3] = {tgt->pos.x, tgt->pos.y, tgt->pos.z};
+	
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
 		size_t len = 3 * sizeof (float);
 		ssize_t written = write (tcb->streams[i],buff, len);	
+		
 		assert(written == len);
 	}
 }
@@ -79,6 +81,11 @@ vector_t read_result (uint16_t tid){
 				total_read += bytes_read;
 			}
 		}
+		/*
+		for (int i = 0; i < 3; ++i){
+			printf ("%.16f\n", floatbuf [i]);
+		}
+		*/
 		if (total_read < 3* sizeof(float)){
 			printf ("something went wrong, only %d bytes read\n", total_read);
 			char* bytes = (char*)floatbuf;
@@ -91,6 +98,7 @@ vector_t read_result (uint16_t tid){
 			(vector_t) {.x = floatbuf[0], .y = floatbuf [1], .z = floatbuf[2]};
 		vector_add (&partial_force, &increment);	
 	}	
+	
 	return partial_force;
 }
 
@@ -108,7 +116,10 @@ static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
 		currindexes [tid]++;
 	}
 	if (force_flush || currindexes [tid] == elements_per_write){
-
+		
+//		printf ("elements per write: %d\n", elements_per_write);		
+//		printf ("currind: %d\n", currindexes[tid]);
+//		printf ("force flush : %d\n", force_flush);
 		//flush to dma buffer
 		int stream_to_use = tcb-> stream_index;
 
@@ -116,13 +127,22 @@ static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
 		tcb->stream_index = (tcb->stream_index + 1)%NUM_PIPELINES_PER_CPU;
 
 		size_t len = currindexes[tid] * 4 * sizeof(float);
-		ssize_t written = write (fd, buffer, len);
-		
-		assert (written == len);
-		currindexes [tid] = 0;
+		if (len != 0){
+			ssize_t written = write (fd, buffer, len);
+				
+			assert (written == len);
+			currindexes [tid] = 0;
+		}
+	
 		if (force_flush){	
 			//flush from dma buffers downstream
-			close_streams (tid, 0, 1);
+			//close_streams (tid, 0, 1);
+			float zerobuf[4] = {0,0,0,0};
+			for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
+				write (tcb -> streams [i], zerobuf, sizeof(float) * 4);
+				//force flush to xillybus
+				write (tcb->streams [i], NULL, 0);
+			}
 		}
 	}
 }
@@ -151,6 +171,7 @@ void close_streams (uint16_t tid, int reading, int writing){
 //not threadsafe; call in serial code only
 void update_ilist_len (size_t newlen){
 	elements_per_write = newlen / 10;
+	if (elements_per_write == 0) elements_per_write = 1;
 	assert (elements_per_write < RAMBUFF_SIZE/BUFFER_ENTRY_SIZE);  
 	dbprintf ("NEW PARTS PER WRITE: %hu\n", elements_per_write);
 }

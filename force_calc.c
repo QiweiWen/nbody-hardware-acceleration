@@ -158,9 +158,12 @@ static void direct_sum_force (otree_t* root, otree_t* currnode, List ilist){
 
 static void direct_sum (otree_t* node){
 	assert(node -> total_particles <= GROUP_SIZE);
+
+
 	//make a global ilist
 	List ilist = NULL;
 	int list_is_empty = 1;
+	make_interaction_list (0, node, NULL, &ilist, &list_is_empty);
 	if (!list_is_empty){
 		direct_sum_force (node, node, ilist);
 	}
@@ -218,13 +221,15 @@ static size_t hwaccl_make_ilist (uint16_t tid, otree_t* currnode, otree_t* targe
 void hwaccl_calculate_force (uint16_t tid, otree_t* root, otree_t* node){
 	if (!node) return;	
 	if (node->total_particles < GROUP_SIZE){
+		
 		write_target (tid, &node->centre_of_mass);		
 		size_t ilistlen = hwaccl_make_ilist (tid, root, node);
 		ilist_stats [tid] = ilistlen;	
 		flush_to_dma (tid);
 		vector_t force = read_result (tid);
-		//vector_t force = {0,0,0};
+	//	print_vector (&force);	
 		node->centre_of_mass.acc = force;
+		
 		direct_sum (node);
 	}else{
 		for (int i = 0; i < 8; ++i){

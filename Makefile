@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -c -Wall -g -std=gnu99 -include config.h -D_GNU_SOURCE
 LD = $(CC)
-LDFLAGS = -lm -lpthread
+LDFLAGS = -lm -lpthread -g 
 
 TARGET = nbody
 

@@ -85,13 +85,13 @@ static inline int vector_equal (point_t* a, point_t* b){
 }
 
 static void __attribute__ ((unused)) print_vector (point_t* vec){
-	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
+	dbprintf("(%.20f, %.20f, %.20f)\n", vec->x, vec->y, vec->z);
 }
 
 static void __attribute__ ((unused)) print_pmass (void* data){
 	pmass_t* part = (pmass_t*)data;
 	dbprintf("===\n");
-	dbprintf ("mass %.20lf\n", part->mass);
+	dbprintf ("mass %.20f\n", part->mass);
 	dbprintf("coord: ");print_vector (&part->pos);
 	dbprintf("acc: ");print_vector (&part->acc);	
 	dbprintf("vel: ");print_vector (&part->vel);

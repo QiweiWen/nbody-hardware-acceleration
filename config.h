@@ -1,16 +1,16 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 #include <stdio.h>
-//#define USE_DOUBLE
+#define USE_DOUBLE
 #define NUM_PROCESSORS 1
-#define HWACCL
+//#define HWACCL
 #ifdef HWACCL
 	#ifdef USE_DOUBLE
 		#error "use single precision for hwaccl"
 	#endif
 #endif
 
-//#define DEBUG
+#define DEBUG
 #define ANIM
 #define TIMESTEP "0y10d0s"
 
@@ -26,7 +26,7 @@
 	#error "GROUP SIZE must be larger than leaf node size"
 #endif
 #define BH_THETA 0.4
-#define MIN_MASS 10
+#define MIN_MASS 0.5
 
 
 #ifdef DEBUG
