@@ -5,15 +5,20 @@
 
 char quadrant_result[2][2][2] = {{{0,4},{2,6}},{{1,5},{3,7}}};
 
-//given a node and a coordinate, return which quadrant it is in
-static char childnum (otree_t* node, point_t* pos){
+
+
+static int out_of_bound (otree_t* node, point_t* pos){
 	if (ABS(node->corner.x - pos->x) > node->side_len ||
 		
 		ABS(node->corner.y - pos->y) > node->side_len ||
 		ABS(node->corner.z - pos->z) > node->side_len)
 	{
-		return -1;
-	}
+		return 1;
+	}else return 0;
+}
+//given a node and a coordinate, return which quadrant it is in
+static char childnum (otree_t* node, point_t* pos){
+	if (out_of_bound (node, pos)) return -1;	
 	point_t centre = {.x = node->corner.x + node->side_len/2,
 					  .y = node->corner.y + node->side_len/2,
 					  .z = node->corner.z + node->side_len/2};
@@ -60,6 +65,7 @@ static void otree_collapse(otree_t* node){
 	}
 	assert (node->num_particles == node->total_particles);
 }
+
 otree_t* otree_new(float_t side_len){
 	otree_t* new_tree = (otree_t*)malloc(sizeof(otree_t));
 	*new_tree = (otree_t){.centre_of_mass = (pmass_t){.mass = 0.0},
@@ -73,7 +79,7 @@ otree_t* otree_new(float_t side_len){
 }
 
 otree_t* otree_insert (otree_t* tree, pmass_t* particle){
-	tree->total_particles = 1;	
+	tree->total_particles += 1;	
 	
 	if (tree->centre_of_mass.mass == (float_t)0){
 		tree->centre_of_mass = *particle;
@@ -105,6 +111,26 @@ void otree_free(otree_t* tree){
 		}
 	}
 	free(tree);
+}
+
+void otree_rotate (otree_t* node, pmass_t* particle){
+//TODO:
+//finish the rotation code	
+}
+
+void otree_relocate(otree_t* tree, int i){
+	assert(i < tree->num_particles);
+	if (!out_of_bounds (tree, &tree->particles[i].pos)) {
+		return;		
+	}else{
+		pmass_t part = tree->particles[i];
+		for (int j = i + 1; j < tree->num_particles; ++j){
+			tree->particles[j - 1] = tree->particles[j];
+		}
+		tree->num_particles--;
+		tree->total_particles--;
+		otree_rotate (tree, &part);
+	}	
 }
 
 
