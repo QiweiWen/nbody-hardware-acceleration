@@ -1,10 +1,11 @@
 #ifndef OTREE_H
 #define OTREE_H
 #include "point_mass.h"
-#define OTREE_NODE_CAP 50
+//for ease of debuggging
+#define OTREE_NODE_CAP 5
 typedef struct otree{
 	pmass_t centre_of_mass;
-	float_t side_len;
+	floating_point side_len;
 	//the corner with the lowest values of x y and z
 	point_t corner;
 	int num_particles;
@@ -15,10 +16,15 @@ typedef struct otree{
 	struct otree* parent;
 }otree_t;
 
-otree_t* otree_new(float_t side_len);
+//create an empty root node
+otree_t* otree_new(floating_point side_len);
+//free up the memory taken by the tree
 void otree_free (otree_t* tree);
+//insert a node
 otree_t* otree_insert (otree_t* tree, pmass_t* particle);
-//we don't delete from the tree
-//collisionless, no black holes either
-
+//called on a leaf node
+//check the position of the i'th particle
+//if it is out of bound, rotate it upwards
+//until we find a parent node where it can be inserted again
+void otree_relocate(otree_t* tree, int i, pmass_t* particle);
 #endif
