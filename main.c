@@ -70,12 +70,16 @@ int main (int argc, char** argv){
 	
 		printf("mass of the moved particle: %lf\n", new_mass.mass);
 		fflush(stdout);
-		otree_t* new_leaf = otree_relocate (leaf, ind, NULL);
+		otree_t* com_origin;
+		otree_t* new_leaf = otree_relocate (leaf, ind, NULL, &com_origin);
+		
 
 		printf("total mass should not change or something must be wrong\n");
 		printf("old mass: %lf\n",tree->centre_of_mass.mass);
+		
+		if (com_origin != leaf) printf("YO\n");
 
-		otree_fix_com (leaf, new_leaf, &old, &new_mass);
+		otree_fix_com (com_origin, new_leaf, &old, &new_mass);
 
 		printf("new mass: %lf\n", tree->centre_of_mass.mass);
 

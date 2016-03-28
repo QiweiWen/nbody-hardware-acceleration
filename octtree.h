@@ -32,8 +32,13 @@ otree_t* otree_insert (otree_t* tree, pmass_t* particle, int cal_com);
 //if it is out of bound, rotate it upwards
 //until we find a parent node where it can be inserted again
 //return the new leaf node where the particle now is
+//
+//com_origin: the old leaf node might be collapsed,
+//so we need to return a node pointer to the caller
+//telling it where to start fixing centres of mass
 //O(logn)
-otree_t* otree_relocate(otree_t* tree, int i, pmass_t* particle);
+otree_t* otree_relocate(otree_t* tree, int i, pmass_t* particle,
+						otree_t** com_origin);
 
 //fix the centre of mass of all nodes affected by relocating
 //O(logn)

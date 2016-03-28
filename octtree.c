@@ -146,12 +146,13 @@ void otree_free(otree_t* tree){
 	for (int i = 0; i < 8; ++i){
 		if (tree->children[i] != NULL){
 			otree_free(tree->children[i]);
-		}
+		}else continue;
 	}
 	free(tree);
 }
 
-otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
+otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle, 
+		otree_t** com_origin){
 	assert (i < tree->num_particles);
 
 	if (tree->children[0] == NULL){
@@ -166,7 +167,8 @@ otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
 			}
 			tree->total_particles--;
 			tree->num_particles --;
-			return otree_relocate (tree->parent,-1,&part);
+			*com_origin = tree;
+			return otree_relocate (tree->parent,-1,&part, com_origin);
 		}
 	}else{
 		if (!out_of_bound (tree, &particle->pos)){
@@ -181,9 +183,10 @@ otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
 			if (tree->total_particles-- <= OTREE_NODE_CAP){
 				//this should be exactly one level above leaf
 				assert (tree->children[0]->children[0] == NULL);
+				*com_origin = tree;
 				otree_collapse (tree,-1,-1);
 			}
-			return otree_relocate (tree->parent, -1, particle);	
+			return otree_relocate (tree->parent, -1, particle, com_origin);	
 		}
 	}
 }
