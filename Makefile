@@ -1,6 +1,7 @@
 CC = gcc
 CFLAGS = -c -Wall -g  -std=gnu99
 LD = $(CC)
+LDFLAGS = -lm
 
 
 TARGET = nbody
@@ -12,10 +13,10 @@ all: $(TARGET)
 	echo $(HEADERS)
 
 $(TARGET): $(OBJECTS) $(HEADERS)
-	$(LD) -o $@ $^ 
+	$(LD) -o $@ $^ $(LDFLAGS) 
 
 %.o: %.c
 	$(CC) $(CFLAGS) $^ -o $@
 
-clean:
-	rm $(TARGET) $(OBJECTS)
+clean:	
+	find . -name "*.o" -o -name "nbody"|xargs rm -f

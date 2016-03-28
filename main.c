@@ -43,7 +43,7 @@ int main (int argc, char** argv){
 		part.pos.x = x, part.pos.y = y, part.pos.z = z;
 		part.mass  = mass;
 
-		leaf = otree_insert (tree,&part); 
+		leaf = otree_insert (tree,&part, 1); 
 	}
 	
 	check_constraints(tree);
@@ -61,11 +61,24 @@ int main (int argc, char** argv){
 		y = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		z = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 
+		pmass_t old = leaf->particles[ind];
+
 		leaf->particles[ind].pos.x = x;
 		leaf->particles[ind].pos.y = y;
 		leaf->particles[ind].pos.z = z;
+		pmass_t new_mass = leaf->particles[ind];
+	
+		printf("mass of the moved particle: %lf\n", new_mass.mass);
+		fflush(stdout);
+		otree_t* new_leaf = otree_relocate (leaf, ind, NULL);
 
-		otree_relocate (leaf, ind, NULL);
+		printf("total mass should not change or something must be wrong\n");
+		printf("old mass: %lf\n",tree->centre_of_mass.mass);
+
+		otree_fix_com (leaf, new_leaf, &old, &new_mass);
+
+		printf("new mass: %lf\n", tree->centre_of_mass.mass);
+
 		assert (tree->total_particles == 1000);
 		check_constraints(tree);
 	}
