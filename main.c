@@ -46,7 +46,7 @@ int main (int argc, char** argv){
 		leaf = otree_insert (tree,&part, 1); 
 	}
 	
-	check_constraints(tree);
+	check_constraints(tree,1,1);
 	otree_t* leaves[1000];
 	int num_leaves = get_leaves (tree, leaves, 0, 100);
 	printf("%d\n", num_leaves);
@@ -70,21 +70,22 @@ int main (int argc, char** argv){
 	
 		printf("mass of the moved particle: %lf\n", new_mass.mass);
 		fflush(stdout);
-		otree_t* com_origin;
-		otree_t* new_leaf = otree_relocate (leaf, ind, NULL, &com_origin);
-		
 
 		printf("total mass should not change or something must be wrong\n");
-		printf("old mass: %lf\n",tree->centre_of_mass.mass);
-		
-		if (com_origin != leaf) printf("YO\n");
+		printf("old mass: %lf\n",tree->centre_of_mass.mass);	
 
-		otree_fix_com (com_origin, new_leaf, &old, &new_mass);
+		otree_t* new_leaf = otree_relocate (leaf, ind, NULL);
+
+		check_constraints(tree,0,0);
+		otree_fix_com (leaf, new_leaf, &old, &new_mass);
+
+		check_constraints(tree,1,0);
+		assert(tree == otree_garbage_collect (tree));	
 
 		printf("new mass: %lf\n", tree->centre_of_mass.mass);
 
 		assert (tree->total_particles == 1000);
-		check_constraints(tree);
+		check_constraints(tree,1,1);
 	}
 	return 0;
 }

@@ -3,7 +3,6 @@ CFLAGS = -c -Wall -g  -std=gnu99
 LD = $(CC)
 LDFLAGS = -lm
 
-
 TARGET = nbody
 
 OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))

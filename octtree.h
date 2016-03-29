@@ -3,9 +3,9 @@
 #include "point_mass.h"
 //for ease of debuggging
 #define OTREE_NODE_CAP 5
-//stop updating centre of mass once the
-//last update moves the centre of mass
-//less than one one thousands of the node's length
+//when an update changes the COM
+//by less than on one thousands
+//stop updating
 #define COM_RESOLUTION 1000
 typedef struct otree{
 	pmass_t centre_of_mass;
@@ -37,8 +37,17 @@ otree_t* otree_insert (otree_t* tree, pmass_t* particle, int cal_com);
 //so we need to return a node pointer to the caller
 //telling it where to start fixing centres of mass
 //O(logn)
-otree_t* otree_relocate(otree_t* tree, int i, pmass_t* particle,
-						otree_t** com_origin);
+otree_t* otree_relocate(otree_t* tree, int i, pmass_t* particle);
+
+
+//free up memory by undividing cells
+//doing this while relocating is more more effecient,
+//but it makes the function tricky to use
+//TODO: call this once in a while, say once every half a second
+//make sure the peak memory stays well below 512MB, that's all
+//TODO: figure out the time complexity. I don't think it's more
+//expensive than nlogn
+otree_t* otree_garbage_collect (otree_t* root);
 
 //fix the centre of mass of all nodes affected by relocating
 //O(logn)
@@ -46,5 +55,5 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 					pmass_t* new_part);
 //check the tree constraints
 //to make sure the functions are correct
-void check_constraints (otree_t* root);
+void check_constraints (otree_t* root, int check_mass, int garbage_free);
 #endif

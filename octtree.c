@@ -78,24 +78,29 @@ static int otree_collapse(otree_t* node,int old_child, int old_index){
 	//all these asserts:
 	//if these invariants break then we should
 	//fail noisily instead of silently
+	assert (node->total_particles <= OTREE_NODE_CAP);
 	int res = -1;
 	for (int i = 0; i < 8; ++i){
 
-		assert(node->children[i]->children[0] == NULL);
-		assert(node->children[i]->num_particles == 
-				   node->children[i]->total_particles);
-		for (int j = 0; j < node->children[i]->num_particles; ++j){
-			if (res == -1){
-				if (i == old_child && j == old_index){
-					res = node->num_particles;
+		if (node->children[i]->children[0] == NULL){
+			assert(node->children[i]->num_particles == 
+					   node->children[i]->total_particles);
+			for (int j = 0; j < node->children[i]->num_particles; ++j){
+				if (res == -1){
+					if (i == old_child && j == old_index){
+						res = node->num_particles;
+					}
 				}
+				assert(node->num_particles <= OTREE_NODE_CAP);
+				node->particles [node->num_particles ++] = 
+					node->children[i]->particles[j];
 			}
-			assert(node->num_particles <= OTREE_NODE_CAP);
-			node->particles [node->num_particles ++] = 
-				node->children[i]->particles[j];
+			free (node->children[i]);
+			node->children[i] = NULL;
+		}else{
+			otree_collapse(node->children[i],-1,-1);
+			i--;
 		}
-		free (node->children[i]);
-		node->children[i] = NULL;
 	}
 	assert (node->num_particles == node->total_particles);
 	return res;
@@ -151,8 +156,7 @@ void otree_free(otree_t* tree){
 	free(tree);
 }
 
-otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle, 
-		otree_t** com_origin){
+otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
 	assert (i < tree->num_particles);
 
 	if (tree->children[0] == NULL){
@@ -166,9 +170,8 @@ otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle,
 				tree->particles[j - 1] = tree->particles[j];
 			}
 			tree->total_particles--;
-			tree->num_particles --;
-			*com_origin = tree;
-			return otree_relocate (tree->parent,-1,&part, com_origin);
+			tree->num_particles --;	
+			return otree_relocate (tree->parent,-1,&part);
 		}
 	}else{
 		if (!out_of_bound (tree, &particle->pos)){
@@ -180,18 +183,53 @@ otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle,
 				//the thing has left the system
 				return NULL;
 			}
+			tree->total_particles--;
+			/*
+			//BAD IDEA 
 			if (tree->total_particles-- <= OTREE_NODE_CAP){
 				//this should be exactly one level above leaf
 				assert (tree->children[0]->children[0] == NULL);
 				*com_origin = tree;
 				otree_collapse (tree,-1,-1);
 			}
-			return otree_relocate (tree->parent, -1, particle, com_origin);	
+			*/
+			return otree_relocate (tree->parent, -1, particle);	
 		}
 	}
 }
 
- 
+
+
+otree_t* otree_garbage_collect (otree_t* root){
+	otree_t* parent = root->parent;	
+	if (root->children[0] == NULL){
+		if (parent == NULL)return root;
+		if (parent->total_particles <= OTREE_NODE_CAP){
+			otree_collapse(parent, -1, -1);
+			//"root" not valid anymore
+			return NULL;
+		}else{
+			return root;
+		}
+	}else{
+		int i_am_a_leaf = 0;
+		for (int i = 0; i < 8; ++i){
+			i_am_a_leaf = 
+				(otree_garbage_collect(root->children[i]) == NULL);
+			if (i_am_a_leaf) break;
+		}
+		if (i_am_a_leaf){
+			if (parent == NULL) return root;	
+			if (parent->total_particles <= OTREE_NODE_CAP){
+				otree_collapse (parent, -1, -1);
+				return NULL;
+			}else{
+				return root;
+			}
+		}else return root;
+	}
+}
+
 void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part, 
 					pmass_t* new_part)
 {
@@ -252,27 +290,30 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 }
 
 //in case we missed something
-void check_constraints (otree_t* tree){
+void check_constraints (otree_t* tree, int check_mass, int garbage_free){
 	int is_root = (tree->parent == NULL),
 		is_leaf = (tree->children[0] == NULL);	
 	floating_point mass = 0;
-		if (is_leaf){
-	//		printf ("checking leaf node\n");
-			assert (tree->num_particles == tree->total_particles);
-		}else{
-	//		printf ("checking non-leaf\n");
-			assert (tree->num_particles == 0);
-			assert (tree->total_particles > 0);
-			int sum = 0;
-			mass = 0;
-			for (int i = 0; i < 8; ++i){
-				check_constraints (tree->children[i]);
-				sum += tree->children[i]->total_particles;
-				mass += tree->children[i]->centre_of_mass.mass;
-			}
-			assert (sum == tree->total_particles);
-		
-			assert ((mass - tree->centre_of_mass.mass)/mass < 0.01);
+	if (check_mass){
+		if (out_of_bound (tree, &tree->centre_of_mass.pos)){
+			if (tree->num_particles != 0) assert(!"WTF");
 		}
+	}
+	if (is_leaf){
+		assert (tree->num_particles == tree->total_particles);
+	}else{
+		assert (tree->num_particles == 0);
+		if (garbage_free) assert (tree->total_particles >= OTREE_NODE_CAP);
+		int sum = 0;
+		mass = 0;
+		for (int i = 0; i < 8; ++i){
+			check_constraints (tree->children[i], check_mass,garbage_free);
+			sum += tree->children[i]->total_particles;
+			mass += tree->children[i]->centre_of_mass.mass;
+		}
+		assert (sum == tree->total_particles);
+	
+		if (check_mass) assert ((mass - tree->centre_of_mass.mass)/mass < 0.01);
+	}
 
 }
