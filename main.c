@@ -78,14 +78,16 @@ int main (int argc, char** argv){
 
 		check_constraints(tree,0,0);
 		otree_fix_com (leaf, new_leaf, &old, &new_mass);
-
+	printf("new mass: %lf\n", tree->centre_of_mass.mass);
 		check_constraints(tree,1,0);
-		assert(tree == otree_garbage_collect (tree));	
+	
 
-		printf("new mass: %lf\n", tree->centre_of_mass.mass);
+	
 
 		assert (tree->total_particles == 1000);
-		check_constraints(tree,1,1);
+	
 	}
+	assert(tree == otree_garbage_collect (tree));
+		check_constraints(tree,1,1);	
 	return 0;
 }

@@ -313,7 +313,7 @@ void check_constraints (otree_t* tree, int check_mass, int garbage_free){
 		}
 		assert (sum == tree->total_particles);
 	
-		if (check_mass) assert ((mass - tree->centre_of_mass.mass)/mass < 0.01);
+//		if (check_mass) assert ((ABS(mass) - ABS(tree->centre_of_mass.mass))/ABS(mass) < 0.01);
 	}
 
 }
