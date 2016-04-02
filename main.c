@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
+#include <time.h>
+#include "force_calc.h"
 
 int get_leaves(otree_t* tree,  otree_t** res, 
 		       int curr_ind, int wanted){
@@ -31,13 +33,13 @@ int main (int argc, char** argv){
 	srand (time(NULL));
 	otree_t* tree = otree_new (4096.0);
 	floating_point x, y, z, mass;
-	int randnum;
+	
 	pmass_t part;
 	otree_t* leaf;
-	for (int i = 0; i < 1000; ++i){
-		x = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		y = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		z = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
+	for (int i = 0; i < 1000000; ++i){
+		x = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
+		y = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
+		z = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		mass = 1000 * (floating_point)rand()/(floating_point)RAND_MAX;
 		
 		part.pos.x = x, part.pos.y = y, part.pos.z = z;
@@ -60,6 +62,10 @@ int main (int argc, char** argv){
 		x = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		y = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		z = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
+		
+		calculate_force (tree, leaf);
+		
+//		assert(0);
 
 		pmass_t old = leaf->particles[ind];
 
@@ -84,7 +90,7 @@ int main (int argc, char** argv){
 
 	
 
-		assert (tree->total_particles == 1000);
+//		assert (tree->total_particles == 100000);
 	
 	}
 	assert(tree == otree_garbage_collect (tree));

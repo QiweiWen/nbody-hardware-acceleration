@@ -4,7 +4,7 @@
 //for ease of debuggging
 #define OTREE_NODE_CAP 5
 //when an update changes the COM
-//by less than on one thousands
+//by less than one one thousands
 //stop updating
 #define COM_RESOLUTION 1000
 typedef struct otree{
@@ -53,6 +53,7 @@ otree_t* otree_garbage_collect (otree_t* root);
 //O(logn)
 void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part, 
 					pmass_t* new_part);
+
 //check the tree constraints
 //to make sure the functions are correct
 void check_constraints (otree_t* root, int check_mass, int garbage_free);
