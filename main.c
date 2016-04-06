@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
+#include <time.h>
+#include "force_calc.h"
 
 int get_leaves(otree_t* tree,  otree_t** res, 
 		       int curr_ind, int wanted){
@@ -27,17 +29,35 @@ int get_leaves(otree_t* tree,  otree_t** res,
 	return accu;
 }
 
+void test_inline_func(void){
+	pmass_t a = {.pos =  {.x = 5.241, .y  = 9.211, .z = 1.23}};
+	a.mass = 234.1;
+
+
+	pmass_t b = {.pos = {.x = 15.231, .y  = 91.31, .z = 11.3}};
+	b.mass = 21.34;
+
+	point_t force;
+	vector_gravity (&a, &b, &force);
+
+	printf("(%lf, %lf, %lf)\n", force.x, force.y, force.z);
+}
+
 int main (int argc, char** argv){
 	srand (time(NULL));
 	otree_t* tree = otree_new (4096.0);
 	floating_point x, y, z, mass;
-	int randnum;
+
 	pmass_t part;
 	otree_t* leaf;
-	for (int i = 0; i < 1000; ++i){
-		x = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		y = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		z = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
+
+//	test_inline_func();
+//	assert(0);
+
+	for (int i = 0; i < 10000; ++i){
+		x = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
+		y = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
+		z = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		mass = 1000 * (floating_point)rand()/(floating_point)RAND_MAX;
 		
 		part.pos.x = x, part.pos.y = y, part.pos.z = z;
@@ -45,49 +65,6 @@ int main (int argc, char** argv){
 
 		leaf = otree_insert (tree,&part, 1); 
 	}
-	
-	check_constraints(tree,1,1);
-	otree_t* leaves[1000];
-	int num_leaves = get_leaves (tree, leaves, 0, 100);
-	printf("%d\n", num_leaves);
-	for (int j = 0; j < 100; ++j){
-		printf("RELOCATING\n");
-		get_leaves (tree, leaves, 0, 1);
-		leaf = leaves[0];
-		int ind = rand() % leaf->num_particles;
-
-
-		x = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		y = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		z = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-
-		pmass_t old = leaf->particles[ind];
-
-		leaf->particles[ind].pos.x = x;
-		leaf->particles[ind].pos.y = y;
-		leaf->particles[ind].pos.z = z;
-		pmass_t new_mass = leaf->particles[ind];
-	
-		printf("mass of the moved particle: %lf\n", new_mass.mass);
-		fflush(stdout);
-
-		printf("total mass should not change or something must be wrong\n");
-		printf("old mass: %lf\n",tree->centre_of_mass.mass);	
-
-		otree_t* new_leaf = otree_relocate (leaf, ind, NULL);
-
-		check_constraints(tree,0,0);
-		otree_fix_com (leaf, new_leaf, &old, &new_mass);
-	printf("new mass: %lf\n", tree->centre_of_mass.mass);
-		check_constraints(tree,1,0);
-	
-
-	
-
-		assert (tree->total_particles == 1000);
-	
-	}
-	assert(tree == otree_garbage_collect (tree));
-		check_constraints(tree,1,1);	
+	calculate_force(tree,tree);
 	return 0;
 }

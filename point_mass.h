@@ -44,4 +44,39 @@ static inline pmass_t centre_of_mass (pmass_t* a, pmass_t* b){
 	floating_point z = (a->pos.z * a->mass + b->pos.z * b->mass)/(mass);
 	return (pmass_t){.pos = (point_t){.x = x, .y = y, .z = z}, .mass = mass};
 }
+
+static inline void vector_scalar_mult (point_t* vec, floating_point scale){
+	vec->x *= scale;
+	vec->y *= scale;
+	vec->z *= scale;
+}
+
+
+static inline void vector_scalar_div (point_t* vec, floating_point scale){
+	vec->x /= scale;
+	vec->y /= scale;
+	vec->z /= scale;
+}
+
+static inline void vector_gravity (pmass_t* acted, pmass_t* object, point_t* res){
+	res->x = object->pos.x - acted->pos.x,
+	res->y = object->pos.y - acted->pos.y,
+	res->z = object->pos.z - acted->pos.z;
+
+	floating_point scalar_force = force_between_particles (acted, object);
+	floating_point mag = sqrt (res->x * res->x + res->y * res->y + res->z * res->z);
+	
+	vector_scalar_div (res, mag);
+	vector_scalar_mult(res,scalar_force);
+}
+
+static inline void vector_add (point_t* res, point_t* other){
+	res->x += other->x;
+	res->y += other->y;
+	res->z += other->z;
+}
+
+static inline int vector_equal (point_t* a, point_t* b){
+	return (a->x == b->x && a->y == b->y && a->z == b->z);
+}
 #endif
