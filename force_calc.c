@@ -13,16 +13,16 @@
 #define BH_THETA 0.2
 
 static void print_vector (point_t* vec){
-	printf("(%lf, %lf, %lf)\n", vec->x, vec->y, vec->z);
+	dbprintf("(%lf, %lf, %lf)\n", vec->x, vec->y, vec->z);
 }
 
 static void print_pmass (void* data){
 	pmass_t* part = (pmass_t*)data;
-	printf("===\n");
-	printf ("mass %lf\n",part->pos.x, part->pos.y,part->pos.z, part->mass);
-	printf("coord: ");print_vector (&part->pos);
-	printf("acc: ");print_vector (&part->acc);	
-	printf("vel: ");print_vector (&part->vel);
+	dbprintf("===\n");
+	dbprintf ("mass %lf\n",part->mass);
+	dbprintf("coord: ");print_vector (&part->pos);
+	dbprintf("acc: ");print_vector (&part->acc);	
+	dbprintf("vel: ");print_vector (&part->vel);
 
 }
 
@@ -55,16 +55,16 @@ static inline int far_far_away(otree_t* node, otree_t* target){
 							   &tmp, &target->centre_of_mass.pos));
 	/*
 	if (width/dist > BH_THETA){
-		printf("=================\n");
-		printf("corner: (%lf, %lf, %lf)\n", tmp.x, tmp.y, tmp.z);
-		printf("distant COM:");
+		dbprintf("=================\n");
+		dbprintf("corner: (%lf, %lf, %lf)\n", tmp.x, tmp.y, tmp.z);
+		dbprintf("distant COM:");
 		print_pmass ((void*)&target->centre_of_mass);
-		printf("width %lf, dist %lf, theta %lf\n", width, dist, width/dist);		
+		dbprintf("width %lf, dist %lf, theta %lf\n", width, dist, width/dist);		
 	}
 	*/
 	return (width/dist <= BH_THETA);
 }
-extern int add_count, push_count;
+
 static void make_interaction_list (int barnes_hut, otree_t* currnode, 
 								   otree_t* origin,
 								   List* ilist,int* list_is_empty)
@@ -124,13 +124,14 @@ static void sum_interaction_list (otree_t* node, List ilist){
 		vector_add (&(node->centre_of_mass.acc),&force);
 		head = list_pop(head);
 	}	
+	//scale the acceleration to add
 }
 
 static void direct_sum_force (otree_t* root, otree_t* currnode, List ilist){
 	if (currnode->children[0] == NULL){
 		//apply effect of ilist on every particle
 		for (int i = 0; i < currnode->num_particles; ++i){
-		//	printf("%d\n", i);
+		//	dbprintf("%d\n", i);
 			List head = ilist;
 			pmass_t* part;
 			point_t force;
@@ -166,9 +167,6 @@ static void direct_sum (otree_t* node){
 	List ilist = NULL;
 	int list_is_empty = 1;
 	make_interaction_list (0, node, NULL, &ilist, &list_is_empty);
-
-
-
 	direct_sum_force (node, node, ilist);
 	destroyList (ilist, free);
 }
@@ -176,14 +174,15 @@ static void direct_sum (otree_t* node){
 void calculate_force (otree_t* root,otree_t* node){
 	assert(node);
 
-	add_count = 0;
-	push_count = 0;
 	if (node->total_particles < GROUP_SIZE){
 		List ilist = NULL;
 		int list_is_empty = 1;
 		make_interaction_list (1, root, node, &ilist,&list_is_empty);
+		//printf("%d\n", list_aggregate(ilist, yes)); 
 		//sum force
-		sum_interaction_list (node, ilist);
+		if (!list_is_empty){
+			sum_interaction_list (node, ilist);
+		}
 		//use direct sum for the forces within a group
 		direct_sum (node);
 		//delete ilist

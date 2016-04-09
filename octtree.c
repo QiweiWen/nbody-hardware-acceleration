@@ -75,7 +75,7 @@ static void otree_split (otree_t* node){
 }
 
 static int otree_collapse(otree_t* node,int old_child, int old_index){
-	//printf("collapsing\n");
+	//dbprintf("collapsing\n");
 	//all these asserts:
 	//if these invariants break then we should
 	//fail noisily instead of silently
@@ -157,6 +157,10 @@ void otree_free(otree_t* tree){
 	free(tree);
 }
 
+static void print_vector (point_t* vec){
+	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
+}
+
 otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
 	assert (i < tree->num_particles);
 
@@ -165,13 +169,13 @@ otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
 			//leaf node, constraint met, job done
 			return tree;
 		}else{
+			tree->total_particles--;
+			tree->num_particles --;	
 			if (tree->parent == NULL) return NULL;	
 			pmass_t part = tree->particles[i];
 			for (int j = i + 1; j < tree->num_particles; ++j){
 				tree->particles[j - 1] = tree->particles[j];
 			}
-			tree->total_particles--;
-			tree->num_particles --;	
 			return otree_relocate (tree->parent,-1,&part);
 		}
 	}else{
@@ -240,7 +244,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	pmass_t new_centre;
 	floating_point centre_displ;
 	int update_position = 1;
-//	printf("AFFECTED NODES\n");
+//	dbprintf("AFFECTED NODES\n");
 	//take away the influence of old particle from src and its ancestors
 	for (;node_ptr != NULL;){
 		if (update_position){
@@ -259,11 +263,11 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
-//		printf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
+//		dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
 		node_ptr = node_ptr->parent;
 		
 	}
-//	printf("INSERTING BACK\n");
+//	dbprintf("INSERTING BACK\n");
 	//add in the influence of the new particle to dest and its ancestors
 	adj_mass = *new_part;
 	node_ptr = dst;
@@ -285,7 +289,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
 		
-//		printf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
+//		dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
 		node_ptr = node_ptr->parent;
 	}
 }

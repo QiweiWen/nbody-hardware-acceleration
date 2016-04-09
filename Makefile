@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -c -Wall -g  -std=gnu99
+CFLAGS = -c -Wall -g  -std=gnu99 -include config.h
 LD = $(CC)
 LDFLAGS = -lm
 
@@ -14,8 +14,8 @@ all: $(TARGET)
 $(TARGET): $(OBJECTS) $(HEADERS)
 	$(LD) -o $@ $^ $(LDFLAGS) 
 
-%.o: %.c
-	$(CC) $(CFLAGS) $^ -o $@
+%.o: %.c config.h
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:	
 	find . -name "*.o" -o -name "nbody"|xargs rm -f

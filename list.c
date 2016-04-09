@@ -4,7 +4,7 @@
 #include <assert.h>
 
 
-int add_count, push_count;
+
 
 List newList(void){
 	List l = (List)malloc(sizeof(struct _list));
@@ -14,7 +14,7 @@ List newList(void){
 }
 
 void add_list(void* newItem,List l){
-	++add_count;
+
 	if (l->key == NULL){
 		l->key = newItem;
 	}else{
@@ -108,7 +108,7 @@ List list_pop(List l){
 }
 
 List list_push (List l,void* newItem){
-	++push_count;
+	
 	List newLink = (List)malloc(sizeof (struct _list));
 	newLink->key = newItem;
 	newLink->next = l;

@@ -1,12 +1,7 @@
 #ifndef OTREE_H
 #define OTREE_H
 #include "point_mass.h"
-//for ease of debuggging
-#define OTREE_NODE_CAP 5
-//when an update changes the COM
-//by less than one one thousands
-//stop updating
-#define COM_RESOLUTION 1000
+#include "config.h"
 typedef struct otree{
 	pmass_t centre_of_mass;
 	floating_point side_len;

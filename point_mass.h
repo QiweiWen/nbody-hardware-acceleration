@@ -4,13 +4,14 @@
 #include <math.h>
 #ifdef USE_DOUBLE
 typedef double floating_point;
+#define FFMT  "%lf"
 #else
 typedef float floating_point;
+#define FFMT  "%f"
 #endif
 
 #define ABS(x) ((x) >= 0? x: (-1.0)*(x))
-#define NEWTON_MANTISSA ((floating_point)6.674)
-
+#define NEWTON_CONSTANT (0.00000000006674)
 
 typedef  struct point{
 	floating_point x,y,z;
@@ -31,10 +32,10 @@ static inline floating_point dist_between_points_sqrd(point_t* a, point_t* b){
 	return x_dist * x_dist + y_dist * y_dist + z_dist * z_dist;
 }
 
-static inline floating_point force_between_particles (pmass_t* a, pmass_t* b){
-	floating_point force = NEWTON_MANTISSA * a->mass * b->mass;
-	force /= dist_between_points_sqrd (&a->pos, &b->pos);
-	return force;
+static inline floating_point acceleration_on_particle (pmass_t* a, pmass_t* b){
+	floating_point acc = NEWTON_CONSTANT * b->mass;
+	acc /= dist_between_points_sqrd (&a->pos, &b->pos);
+	return acc;
 }
 
 static inline pmass_t centre_of_mass (pmass_t* a, pmass_t* b){
@@ -44,6 +45,7 @@ static inline pmass_t centre_of_mass (pmass_t* a, pmass_t* b){
 	floating_point z = (a->pos.z * a->mass + b->pos.z * b->mass)/(mass);
 	return (pmass_t){.pos = (point_t){.x = x, .y = y, .z = z}, .mass = mass};
 }
+
 
 static inline void vector_scalar_mult (point_t* vec, floating_point scale){
 	vec->x *= scale;
@@ -63,11 +65,11 @@ static inline void vector_gravity (pmass_t* acted, pmass_t* object, point_t* res
 	res->y = object->pos.y - acted->pos.y,
 	res->z = object->pos.z - acted->pos.z;
 
-	floating_point scalar_force = force_between_particles (acted, object);
+	floating_point scalar_acceleration = acceleration_on_particle (acted, object);
 	floating_point mag = sqrt (res->x * res->x + res->y * res->y + res->z * res->z);
 	
 	vector_scalar_div (res, mag);
-	vector_scalar_mult(res,scalar_force);
+	vector_scalar_mult(res,scalar_acceleration);
 }
 
 static inline void vector_add (point_t* res, point_t* other){
