@@ -7,6 +7,15 @@
 #include <assert.h>
 #include <stdint.h>
 
+
+extern uint64_t direct_sum_times;
+extern uint64_t direct_sum_total_len;
+
+extern uint64_t group_times;
+extern uint64_t group_sum_total_len;
+
+extern uint64_t sum_ilist_count;
+
 static void print_vector (point_t* vec){
 	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
 }
@@ -172,11 +181,7 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 	}
 	free (heapbuf);
 	run_simulation (years, days, seconds, the_tree, anim);
-	
-	otree_t* leaf;
-	get_leaves (the_tree, &leaf,0,1);
-	printf("new locations\n");
-	for (int i = 0; i < leaf->num_particles; ++i){
-		print_pmass (&leaf->particles[i]);	
-	}
+	printf("direct sum: %llu, %llu\ngroup: %llu, %llu\nsum_ilst: %llu\n",
+			direct_sum_total_len, direct_sum_times, group_sum_total_len, group_times, sum_ilist_count);
 }
+

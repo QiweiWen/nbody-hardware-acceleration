@@ -5,12 +5,7 @@
 #include <assert.h>
 #include <math.h>
 #include "list.h"
-//maximum size of a node (not neccessarily leaf)
-//for all particles under it to share the 
-//same interactio list
-#define GROUP_SIZE (OTREE_NODE_CAP * 10) 
-
-#define BH_THETA 0.2
+#include <stdint.h>
 
 static void print_vector (point_t* vec){
 	dbprintf("(%lf, %lf, %lf)\n", vec->x, vec->y, vec->z);
@@ -65,18 +60,20 @@ static inline int far_far_away(otree_t* node, otree_t* target){
 	return (width/dist <= BH_THETA);
 }
 
-static void make_interaction_list (int barnes_hut, otree_t* currnode, 
+static int make_interaction_list (int barnes_hut, otree_t* currnode, 
 								   otree_t* origin,
 								   List* ilist,int* list_is_empty)
 {
+	int res = 0;
 	if (*ilist == NULL){
 		*ilist = newList();
 	}
-	if (currnode == origin) return;
-	if (currnode->centre_of_mass.mass < 0.1) return;	
+	if (currnode == origin) return 0;
+	if (currnode->centre_of_mass.mass < 0.1) return 0;	
 	if (currnode->children[0] == NULL){
 		//leaf
 		//add all particles
+	
 		for (int i = 0; i < currnode->num_particles; ++i){
 			pmass_t* part_heap = malloc(sizeof(pmass_t));
 			*part_heap = currnode->particles[i];
@@ -86,6 +83,7 @@ static void make_interaction_list (int barnes_hut, otree_t* currnode,
 			}else{
 				*ilist = list_push (*ilist,part_heap);	
 			}
+			++res;
 		}
 	}else{
 		//not leaf
@@ -93,7 +91,7 @@ static void make_interaction_list (int barnes_hut, otree_t* currnode,
 		int go_further = !barnes_hut || !far_far_away(origin, currnode);
 		if (go_further){
 			for (int i = 0; i < 8; ++i){
-				make_interaction_list (barnes_hut, currnode->children[i],origin,
+				res += make_interaction_list (barnes_hut, currnode->children[i],origin,
 									  ilist,list_is_empty);
 			}
 		}else{
@@ -105,13 +103,25 @@ static void make_interaction_list (int barnes_hut, otree_t* currnode,
 			}else{
 				*ilist = list_push (*ilist, part_heap);
 			}
+			++res;
 		}	
 	}
+	return res;
 }
 static int yes (void* data) {
 	return 1;
 }
-static void sum_interaction_list (otree_t* node, List ilist){
+
+uint64_t direct_sum_times = 0;
+uint64_t direct_sum_total_len = 0;
+
+uint64_t group_times = 0;
+uint64_t group_sum_total_len = 0;
+
+uint64_t sum_ilist_count = 0;
+
+static void __attribute__ ((noinline)) sum_interaction_list (otree_t* node, List ilist)  {
+	++sum_ilist_count;
 	List head = ilist;
 	pmass_t* part;
 	point_t  force;
@@ -124,7 +134,6 @@ static void sum_interaction_list (otree_t* node, List ilist){
 		vector_add (&(node->centre_of_mass.acc),&force);
 		head = list_pop(head);
 	}	
-	//scale the acceleration to add
 }
 
 static void direct_sum_force (otree_t* root, otree_t* currnode, List ilist){
@@ -166,7 +175,8 @@ static void direct_sum (otree_t* node){
 	//make a global ilist
 	List ilist = NULL;
 	int list_is_empty = 1;
-	make_interaction_list (0, node, NULL, &ilist, &list_is_empty);
+	direct_sum_times += 1;
+	direct_sum_total_len += make_interaction_list (0, node, NULL, &ilist, &list_is_empty);
 	direct_sum_force (node, node, ilist);
 	destroyList (ilist, free);
 }
@@ -177,7 +187,12 @@ void calculate_force (otree_t* root,otree_t* node){
 	if (node->total_particles < GROUP_SIZE){
 		List ilist = NULL;
 		int list_is_empty = 1;
-		make_interaction_list (1, root, node, &ilist,&list_is_empty);
+		group_times += 1;
+		int ridiculous = make_interaction_list (1, root, node, &ilist,&list_is_empty);
+		group_sum_total_len += ridiculous;
+
+	//	printf("ridiculous %d\n", ridiculous);
+		
 		//printf("%d\n", list_aggregate(ilist, yes)); 
 		//sum force
 		if (!list_is_empty){
