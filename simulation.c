@@ -71,7 +71,7 @@ static inline void do_integration (pmass_t* particle, uint64_t total_seconds){
 //bloody good fun
 //mass in kg, distance in metres, velocity in m/s
 //force in Newtons
-static void integrate (otree_t* node, int years, int days, int seconds){
+static void integrate (otree_t* node, int years, int days, int seconds, int dump, FILE* ofile){
 	pmass_t* the_particle;
 	uint64_t total_seconds = (uint64_t)days * SECS_IN_DAY +
 							 (uint64_t)years * SECS_IN_DAY * DAYS_IN_YEAR +
@@ -81,7 +81,10 @@ static void integrate (otree_t* node, int years, int days, int seconds){
 		for (int i = 0; i < node->num_particles; ++i){
 			the_particle = &(node->particles[i]);
 			do_integration (the_particle, total_seconds);
-		
+			if (dump){
+				assert (ofile);
+				fprintf (ofile, "(%.16lf, %.16lf, %.16lf)\n", the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
+			}
 			if (node != otree_relocate(node,i,NULL)){
 				//so the node just moved elsewhere	
 				i--;
@@ -89,7 +92,7 @@ static void integrate (otree_t* node, int years, int days, int seconds){
 		}	
 	}else{
 		for (int i = 0; i < 8; ++i){
-			integrate (node, years, days, seconds);
+			integrate (node->children[i], years, days, seconds, dump, ofile);
 		}
 	}
 }
@@ -98,11 +101,26 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 	int ts_years, ts_days, ts_secs;
 	sscanf (TIMESTEP, "%dy%dd%ds", &ts_years, &ts_days, &ts_secs);
 	assert (ts_secs < SECS_IN_DAY && ts_days < DAYS_IN_YEAR);
-	
+
+	FILE* ofile = NULL;
+#ifdef ANIM
+	if (anim){
+		ofile = fopen ("simfile", "w");
+		fprintf (ofile, "%lf\n", root->side_len);
+	}	
+#endif
 	int curr_years = 0, curr_days = 0, curr_secs = 0;
+	int cycles = 0;
 	while (!done(years, days, seconds, curr_years, curr_days, curr_secs)){
-		calculate_force (root, root);	
-		integrate (root, ts_years, ts_days, ts_secs);
+		calculate_force (root, root);
+#ifdef ANIM	
+		if (anim && !(cycles % CYCLES_PER_WRITE)){
+			fprintf(ofile, "====\n");
+			fprintf(ofile, "time %dy%dd%ds\n", curr_years, curr_days, curr_secs);
+			integrate (root, ts_years, ts_days, ts_secs, 1, ofile);
+		}else
+#endif
+		integrate (root, ts_years, ts_days, ts_secs, 0, NULL);
 		//add the time step to the current time	
 		curr_secs += ts_secs;
 		if (curr_secs >= SECS_IN_DAY){
@@ -115,7 +133,11 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 			curr_days -= DAYS_IN_YEAR;
 		}
 		curr_years += ts_years;
+		if (!(cycles % CYCLES_PER_GARBAGE_COLLECT)){
+			otree_garbage_collect (root);
+		}
 		//printf("%d years, %d days and %d secs have passed\n",curr_years,curr_days,curr_secs);
+		++cycles;
 	}	
 }
 
