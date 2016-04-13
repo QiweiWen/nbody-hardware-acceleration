@@ -4,15 +4,15 @@
 #define USE_DOUBLE
 //#define DEBUG
 #define ANIM
-#define TIMESTEP "0y0d60s"
+#define TIMESTEP "0y10d0s"
 //for ease of debuggging
-#define OTREE_NODE_CAP 10
+#define OTREE_NODE_CAP 50
 //when an update changes the COM
 //by less than one one thousands
 //stop updating
 #define COM_RESOLUTION 1000
-#define CYCLES_PER_GARBAGE_COLLECT 1000
-#define CYCLES_PER_WRITE 100
+#define CYCLES_PER_GARBAGE_COLLECT 10
+#define CYCLES_PER_WRITE 1
 
 //maximum size of a node (not neccessarily leaf)
 //for all particles under it to share the 

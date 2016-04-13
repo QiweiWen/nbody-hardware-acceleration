@@ -1,7 +1,7 @@
 CC = gcc
-CFLAGS = -c -Wall -g  -std=gnu99 -include config.h -O2 -pg
+CFLAGS = -c -Wall -g  -std=gnu99 -include config.h
 LD = $(CC)
-LDFLAGS = -lm -pg
+LDFLAGS = -lm -lmcheck
 
 TARGET = nbody
 

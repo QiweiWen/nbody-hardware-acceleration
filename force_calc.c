@@ -177,7 +177,9 @@ static void direct_sum (otree_t* node){
 	int list_is_empty = 1;
 	direct_sum_times += 1;
 	direct_sum_total_len += make_interaction_list (0, node, NULL, &ilist, &list_is_empty);
-	direct_sum_force (node, node, ilist);
+	if (!list_is_empty){
+		direct_sum_force (node, node, ilist);
+	}
 	destroyList (ilist, free);
 }
 
