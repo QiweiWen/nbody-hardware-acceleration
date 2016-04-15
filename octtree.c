@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
+#include "dllist.h"
+#include <string.h>
 
 char quadrant_result[2][2][2] = {{{0,4},{2,6}},{{1,5},{3,7}}};
 
@@ -11,10 +13,10 @@ char quadrant_result[2][2][2] = {{{0,4},{2,6}},{{1,5},{3,7}}};
 static int out_of_bound (otree_t* node, point_t* pos){
 	if (pos->x < node->corner.x || pos->y < node->corner.y 
 	   ||pos->z < node->corner.z) return 1;
-	if (ABS(node->corner.x - pos->x) >= node->side_len ||
+	if (pos->x - node->corner.x >= node->side_len ||
 		
-		ABS(node->corner.y - pos->y) >= node->side_len ||
-		ABS(node->corner.z - pos->z) >= node->side_len)
+		pos->y - node->corner.y >= node->side_len ||
+		pos->z - node->corner.z >= node->side_len)
 	{
 		return 1;
 	}else return 0;
@@ -26,11 +28,12 @@ static char childnum (otree_t* node, point_t* pos){
 					  .y = node->corner.y + node->side_len/2,
 					  .z = node->corner.z + node->side_len/2};
 	
-	char index = 0;
-	char x_res = pos->x > centre.x,
-		 y_res = pos->y > centre.y,
-		 z_res = pos->z > centre.z;
-	return quadrant_result[x_res][y_res][z_res];
+
+	char x_res = pos->x >= centre.x,
+		 y_res = pos->y >= centre.y,
+		 z_res = pos->z >= centre.z;
+
+	return quadrant_result[(int)x_res][(int)y_res][(int)z_res];
 }
 
 static point_t get_corner (otree_t* node, char index){
@@ -64,46 +67,61 @@ static void otree_split (otree_t* node){
 		node->children[i]->corner = get_corner (node, i);
 	}
 
-
+/*
 	for (int i = 0; i < node->num_particles; ++i){
 		char index = childnum (node, &node->particles[i].pos);
 		assert (index != -1);
-		otree_insert(node->children[index], &node->particles[i],1);
+		otree_insert(node->children[(int)index], &node->particles[i],1);
 	}
+	*/
+
+	dlnode_t* curr = node->particles->first,
+			* next;
+	otree_t* the_tree;
+	char index;
+	while (curr != NULL){
+		next = curr->next;
+		index = childnum (node, &((pmass_t*)(curr->key))->pos);
+		the_tree = node->children[(int)index];
+		//the_tree->num_particles++;
+		//the_tree->total_particles++;
+		//insert_dllist_link (the_tree->particles, curr);
+		point_t* pos = &((pmass_t*)(curr->key))->pos;
+	//	printf ("%lf, %lf, %lf\n", pos->x, pos->y, pos->z);
+		otree_insert (the_tree, curr, curr->key, 1);
+		curr = next;
+	}	
+
 	node -> num_particles = 0;
+	memset (node->particles, 0, sizeof (dllist_t));
 }
 
-static int otree_collapse(otree_t* node,int old_child, int old_index){
-	//printf("collapsing\n");
+static void otree_collapse(otree_t* node){
+	//dbprintf("collapsing\n");
 	//all these asserts:
 	//if these invariants break then we should
 	//fail noisily instead of silently
+	printf("collapsing\n");
 	assert (node->total_particles <= OTREE_NODE_CAP);
-	int res = -1;
+
 	for (int i = 0; i < 8; ++i){
 
 		if (node->children[i]->children[0] == NULL){
 			assert(node->children[i]->num_particles == 
 					   node->children[i]->total_particles);
-			for (int j = 0; j < node->children[i]->num_particles; ++j){
-				if (res == -1){
-					if (i == old_child && j == old_index){
-						res = node->num_particles;
-					}
-				}
-				assert(node->num_particles <= OTREE_NODE_CAP);
-				node->particles [node->num_particles ++] = 
-					node->children[i]->particles[j];
-			}
+			//stick the childs list to ours	
+			append_dllist (node->particles, node->children[i]->particles);	
+			node->num_particles += node->children[i]->num_particles;	
+			free (node->children[i]->particles);
 			free (node->children[i]);
 			node->children[i] = NULL;
 		}else{
-			otree_collapse(node->children[i],-1,-1);
+			otree_collapse(node->children[i]);
 			i--;
 		}
 	}
 	assert (node->num_particles == node->total_particles);
-	return res;
+
 }
 
 otree_t* otree_new(floating_point side_len){
@@ -114,11 +132,12 @@ otree_t* otree_new(floating_point side_len){
 						  .num_particles = 0,
 						  .total_particles = 0,  
 						  .children = {NULL},
-						  .parent = NULL};
+						  .parent = NULL,
+						  .particles = new_dllist ()};
 	return new_tree;
 }
 
-otree_t* otree_insert (otree_t* tree, pmass_t* particle, int cal_com){
+otree_t* otree_insert (otree_t* tree, dlnode_t* lnk, pmass_t* particle, int cal_com){
 	tree->total_particles += 1;	
 	
 	assert (!out_of_bound(tree, &particle->pos));	
@@ -136,14 +155,20 @@ otree_t* otree_insert (otree_t* tree, pmass_t* particle, int cal_com){
 			otree_split(tree);
 			goto not_leaf_anymore;
 		}else{
-			tree->particles[tree->num_particles++] = *particle;
+			//tree->particles[tree->num_particles++] = *particle;
+			tree->num_particles++;
+			if (lnk){
+				insert_dllist_link (tree->particles, lnk);	
+			}else{
+				insert_dllist (tree->particles, particle);
+			}			
 			return tree;
 		}	
 	}else{
 		//not leaf
 not_leaf_anymore:;
 		char index = childnum (tree, &particle->pos);
-		return otree_insert (tree->children[index], particle, cal_com);
+		return otree_insert (tree->children[(int)index], lnk, particle, cal_com);
 	}
 }
 
@@ -153,30 +178,44 @@ void otree_free(otree_t* tree){
 			otree_free(tree->children[i]);
 		}else continue;
 	}
+	delete_dllist (tree->particles, free);
 	free(tree);
 }
 
-otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
-	assert (i < tree->num_particles);
+static void print_vector (point_t* vec){
+	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
+}
+
+otree_t* otree_relocate (otree_t* tree, dlnode_t* particle){
+	
 
 	if (tree->children[0] == NULL){
-		if (!out_of_bound (tree, &tree->particles[i].pos)){
+		if (!out_of_bound (tree, 
+						   &((pmass_t*)(particle->key))->pos ))
+		{
 			//leaf node, constraint met, job done
 			return tree;
 		}else{
-			if (tree->parent == NULL) return NULL;	
+			tree->total_particles--;
+			tree->num_particles --;	
+			if (tree->parent == NULL){
+				free (particle->key);
+				free (particle);
+			   	return NULL;
+			}
+			/*	
 			pmass_t part = tree->particles[i];
 			for (int j = i + 1; j < tree->num_particles; ++j){
 				tree->particles[j - 1] = tree->particles[j];
 			}
-			tree->total_particles--;
-			tree->num_particles --;	
-			return otree_relocate (tree->parent,-1,&part);
+			*/
+			dllist_delete_node (tree->particles, particle, 0, NULL);
+			return otree_relocate (tree->parent,particle);
 		}
 	}else{
-		if (!out_of_bound (tree, &particle->pos)){
-			char index = childnum (tree, &particle->pos);
-			return otree_insert (tree->children[index],particle,0);
+		if (!out_of_bound (tree, &((pmass_t*)(particle->key))->pos ) ){
+			char index = childnum (tree, &((pmass_t*)(particle->key))->pos);
+			return otree_insert (tree->children[(int)index],particle,particle->key,0);
 		}else{
 			if (tree->parent == NULL){
 				//we are at the root node and it's still out of bound
@@ -184,16 +223,7 @@ otree_t* otree_relocate (otree_t* tree, int i, pmass_t* particle){
 				return NULL;
 			}
 			tree->total_particles--;
-			/*
-			//BAD IDEA 
-			if (tree->total_particles-- <= OTREE_NODE_CAP){
-				//this should be exactly one level above leaf
-				assert (tree->children[0]->children[0] == NULL);
-				*com_origin = tree;
-				otree_collapse (tree,-1,-1);
-			}
-			*/
-			return otree_relocate (tree->parent, -1, particle);	
+			return otree_relocate (tree->parent, particle);	
 		}
 	}
 }
@@ -205,7 +235,7 @@ otree_t* otree_garbage_collect (otree_t* root){
 	if (root->children[0] == NULL){
 		if (parent == NULL)return root;
 		if (parent->total_particles <= OTREE_NODE_CAP){
-			otree_collapse(parent, -1, -1);
+			otree_collapse(parent);
 			//"root" not valid anymore
 			return NULL;
 		}else{
@@ -221,7 +251,7 @@ otree_t* otree_garbage_collect (otree_t* root){
 		if (i_am_a_leaf){
 			if (parent == NULL) return root;	
 			if (parent->total_particles <= OTREE_NODE_CAP){
-				otree_collapse (parent, -1, -1);
+				otree_collapse (parent);
 				return NULL;
 			}else{
 				return root;
@@ -239,7 +269,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	pmass_t new_centre;
 	floating_point centre_displ;
 	int update_position = 1;
-	printf("AFFECTED NODES\n");
+//	dbprintf("AFFECTED NODES\n");
 	//take away the influence of old particle from src and its ancestors
 	for (;node_ptr != NULL;){
 		if (update_position){
@@ -258,11 +288,11 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
-		printf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
+//		dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
 		node_ptr = node_ptr->parent;
 		
 	}
-	printf("INSERTING BACK\n");
+//	dbprintf("INSERTING BACK\n");
 	//add in the influence of the new particle to dest and its ancestors
 	adj_mass = *new_part;
 	node_ptr = dst;
@@ -284,15 +314,14 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
 		
-		printf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
+//		dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
 		node_ptr = node_ptr->parent;
 	}
 }
 
 //in case we missed something
 void check_constraints (otree_t* tree, int check_mass, int garbage_free){
-	int is_root = (tree->parent == NULL),
-		is_leaf = (tree->children[0] == NULL);	
+	int is_leaf = (tree->children[0] == NULL);	
 	floating_point mass = 0;
 	if (check_mass){
 		if (out_of_bound (tree, &tree->centre_of_mass.pos)){
@@ -301,6 +330,7 @@ void check_constraints (otree_t* tree, int check_mass, int garbage_free){
 	}
 	if (is_leaf){
 		assert (tree->num_particles == tree->total_particles);
+		assert (tree->particles->num == tree->num_particles);
 	}else{
 		assert (tree->num_particles == 0);
 		if (garbage_free) assert (tree->total_particles >= OTREE_NODE_CAP);

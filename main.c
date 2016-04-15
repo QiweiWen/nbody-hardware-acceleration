@@ -32,28 +32,31 @@ int main (int argc, char** argv){
 	otree_t* tree = otree_new (4096.0);
 	floating_point x, y, z, mass;
 	int randnum;
-	pmass_t part;
+	pmass_t* part;
 	otree_t* leaf;
+	printf ("%d\n", OTREE_NODE_CAP);
+	
 	for (int i = 0; i < 1000; ++i){
 		x = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		y = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		z = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		mass = 1000 * (floating_point)rand()/(floating_point)RAND_MAX;
 		
-		part.pos.x = x, part.pos.y = y, part.pos.z = z;
-		part.mass  = mass;
+		part = malloc (sizeof (pmass_t));
+		part->pos.x = x, part->pos.y = y, part->pos.z = z;
+		part->mass  = mass;
 
-		leaf = otree_insert (tree,&part, 1); 
+		leaf = otree_insert (tree,NULL,part, 1); 
 	}
 	
 	check_constraints(tree,1,1);
-	otree_t* leaves[1000];
-	int num_leaves = get_leaves (tree, leaves, 0, 100);
-	printf("%d\n", num_leaves);
-	for (int j = 0; j < 100; ++j){
+
+	
+
+	for (int j = 0; j < 1000; ++j){
 		printf("RELOCATING\n");
-		get_leaves (tree, leaves, 0, 1);
-		leaf = leaves[0];
+		get_leaves (tree, &leaf, 0, 1);
+	
 		int ind = rand() % leaf->num_particles;
 
 
@@ -61,12 +64,13 @@ int main (int argc, char** argv){
 		y = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 		z = 4096.0 * (floating_point)rand()/(floating_point)RAND_MAX;
 
-		pmass_t old = leaf->particles[ind];
-
-		leaf->particles[ind].pos.x = x;
-		leaf->particles[ind].pos.y = y;
-		leaf->particles[ind].pos.z = z;
-		pmass_t new_mass = leaf->particles[ind];
+		pmass_t old = *(pmass_t*)(leaf->particles->first->key);
+		pmass_t* old_ptr = (leaf->particles->first->key);
+		old_ptr->pos.x = x;
+		old_ptr->pos.y = y;
+		old_ptr->pos.z = z;
+		
+		pmass_t new_mass = *(pmass_t*)(leaf->particles->first->key);
 	
 		printf("mass of the moved particle: %lf\n", new_mass.mass);
 		fflush(stdout);
@@ -74,7 +78,7 @@ int main (int argc, char** argv){
 		printf("total mass should not change or something must be wrong\n");
 		printf("old mass: %lf\n",tree->centre_of_mass.mass);	
 
-		otree_t* new_leaf = otree_relocate (leaf, ind, NULL);
+		otree_t* new_leaf = otree_relocate (leaf, leaf->particles->first);
 
 		check_constraints(tree,0,0);
 		otree_fix_com (leaf, new_leaf, &old, &new_mass);
@@ -88,6 +92,7 @@ int main (int argc, char** argv){
 	
 	}
 	assert(tree == otree_garbage_collect (tree));
-		check_constraints(tree,1,1);	
+		check_constraints(tree,1,1);
+		
 	return 0;
 }

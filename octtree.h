@@ -1,12 +1,8 @@
 #ifndef OTREE_H
 #define OTREE_H
 #include "point_mass.h"
-//for ease of debuggging
-#define OTREE_NODE_CAP 5
-//when an update changes the COM
-//by less than on one thousands
-//stop updating
-#define COM_RESOLUTION 1000
+#include "config.h"
+#include "dllist.h"
 typedef struct otree{
 	pmass_t centre_of_mass;
 	floating_point side_len;
@@ -15,7 +11,7 @@ typedef struct otree{
 	int num_particles;
 	//particles in this node and its children
 	int total_particles;
-	pmass_t particles[OTREE_NODE_CAP];
+	dllist_t* particles;	
 	struct otree* children[8];
 	struct otree* parent;
 }otree_t;
@@ -26,7 +22,7 @@ otree_t* otree_new(floating_point side_len);
 void otree_free (otree_t* tree);
 //insert a node
 //O(logn)
-otree_t* otree_insert (otree_t* tree, pmass_t* particle, int cal_com);
+otree_t* otree_insert (otree_t* tree, dlnode_t*, pmass_t* particle, int cal_com);
 //called on a leaf node
 //check the position of the i'th particle
 //if it is out of bound, rotate it upwards
@@ -37,22 +33,19 @@ otree_t* otree_insert (otree_t* tree, pmass_t* particle, int cal_com);
 //so we need to return a node pointer to the caller
 //telling it where to start fixing centres of mass
 //O(logn)
-otree_t* otree_relocate(otree_t* tree, int i, pmass_t* particle);
+otree_t* otree_relocate(otree_t* tree, dlnode_t* particle);
 
 
 //free up memory by undividing cells
 //doing this while relocating is more more effecient,
 //but it makes the function tricky to use
-//TODO: call this once in a while, say once every half a second
-//make sure the peak memory stays well below 512MB, that's all
-//TODO: figure out the time complexity. I don't think it's more
-//expensive than nlogn
 otree_t* otree_garbage_collect (otree_t* root);
 
 //fix the centre of mass of all nodes affected by relocating
 //O(logn)
 void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part, 
 					pmass_t* new_part);
+
 //check the tree constraints
 //to make sure the functions are correct
 void check_constraints (otree_t* root, int check_mass, int garbage_free);
