@@ -71,7 +71,7 @@ int main (int argc, char** argv){
 		old_ptr->pos.z = z;
 		
 		pmass_t new_mass = *(pmass_t*)(leaf->particles->first->key);
-		printf ("====\n");	
+		printf ("==== %d\n", leaf->num_particles);	
 		printf ("leaf: %016x, pos, mass: (%lf, %lf, %lf), %lf\n",
 			leaf, old.pos.x, old.pos.y, old.pos.z, old.mass);	
 		printf ("old com: pos, mass: (%lf, %lf, %lf), %lf",
@@ -81,12 +81,12 @@ int main (int argc, char** argv){
 		otree_t* new_leaf = otree_relocate (leaf, leaf->particles->first);
 
 		check_constraints(tree,0,0);
-		if (new_leaf != leaf){
-			printf ("MOVED\n");
+		//if (new_leaf != leaf){
+		//	printf ("MOVED\n");
 			otree_fix_com (leaf, new_leaf, &old, &new_mass);
-		}else{
-			printf ("NOT MOVED\n");
-		}
+		//}else{
+		//	printf ("NOT MOVED\n");
+		//}
 		printf("new mass: %lf\n", tree->centre_of_mass.mass);
 		check_constraints(tree,1,0);
 	

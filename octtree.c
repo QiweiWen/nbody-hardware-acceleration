@@ -273,7 +273,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 		pmass_t old_centre = node_ptr->centre_of_mass;
 		mass_diff = ABS(node_ptr->centre_of_mass.mass - old_part->mass);
 		
-		if (mass_diff < 0.1){
+		if (mass_diff < MIN_MASS){
 			memset (&node_ptr->centre_of_mass, 0, sizeof (pmass_t));
 			node_ptr = node_ptr->parent;
 			continue;
@@ -291,7 +291,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 				update_position = 0;
 			}*/
 			node_ptr->centre_of_mass = new_centre;
-		if (node_ptr->children[0] == NULL && node_ptr->centre_of_mass.mass >= 0.1){
+		if (node_ptr->children[0] == NULL && node_ptr->centre_of_mass.mass >= MIN_MASS){
 			assert (node_ptr->centre_of_mass.pos.x >= 0);	
 			assert (node_ptr->centre_of_mass.pos.y >= 0);
 			assert (node_ptr->centre_of_mass.pos.z >= 0);
@@ -312,7 +312,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	update_position = 1;
 	for (;node_ptr != NULL;){
 		
-		if (node_ptr->centre_of_mass.mass < 0.1){
+		if (node_ptr->centre_of_mass.mass < MIN_MASS){
 			node_ptr->centre_of_mass = adj_mass;
 			node_ptr = node_ptr->parent;
 			continue;
@@ -347,7 +347,7 @@ void check_constraints (otree_t* tree, int check_mass, int garbage_free){
 	int is_leaf = (tree->children[0] == NULL);	
 	floating_point mass = 0;
 	if (check_mass){
-		if (tree->centre_of_mass.mass >= 0.1){
+		if (tree->centre_of_mass.mass >= MIN_MASS){
 			assert (tree->centre_of_mass.pos.x >= 0);	
 			assert (tree->centre_of_mass.pos.y >= 0);
 			assert (tree->centre_of_mass.pos.z >= 0);
