@@ -13,7 +13,7 @@
 #define COM_RESOLUTION 1000
 #define CYCLES_PER_GARBAGE_COLLECT 10
 #define CYCLES_PER_WRITE 1
-
+#define MIN_MASS 10
 //maximum size of a node (not neccessarily leaf)
 //for all particles under it to share the 
 //same interactio list

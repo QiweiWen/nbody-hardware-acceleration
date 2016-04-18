@@ -101,7 +101,10 @@ static void otree_collapse(otree_t* node){
 	//all these asserts:
 	//if these invariants break then we should
 	//fail noisily instead of silently
-	printf("collapsing\n");
+	printf("collapsing %16x\n", node);
+	printf ("corner (%lf, %lf, %lf), com (%lf, %lf, %lf), %lf kg\n", 
+			node->corner.x, node->corner.y, node->corner.z,
+			node->centre_of_mass.pos.x, node->centre_of_mass.pos.y,node->centre_of_mass.pos.z, node->centre_of_mass.mass);
 	assert (node->total_particles <= OTREE_NODE_CAP);
 
 	for (int i = 0; i < 8; ++i){
@@ -203,12 +206,6 @@ otree_t* otree_relocate (otree_t* tree, dlnode_t* particle){
 				free (particle);
 			   	return NULL;
 			}
-			/*	
-			pmass_t part = tree->particles[i];
-			for (int j = i + 1; j < tree->num_particles; ++j){
-				tree->particles[j - 1] = tree->particles[j];
-			}
-			*/
 			dllist_delete_node (tree->particles, particle, 0, NULL);
 			return otree_relocate (tree->parent,particle);
 		}
@@ -271,7 +268,17 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	int update_position = 1;
 //	dbprintf("AFFECTED NODES\n");
 	//take away the influence of old particle from src and its ancestors
+	floating_point mass_diff;
 	for (;node_ptr != NULL;){
+		pmass_t old_centre = node_ptr->centre_of_mass;
+		mass_diff = ABS(node_ptr->centre_of_mass.mass - old_part->mass);
+		
+		if (mass_diff < 0.1){
+			memset (&node_ptr->centre_of_mass, 0, sizeof (pmass_t));
+			node_ptr = node_ptr->parent;
+			continue;
+		}
+		
 		if (update_position){
 			new_centre = centre_of_mass (&node_ptr->centre_of_mass,
 											   &adj_mass);
@@ -279,16 +286,22 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 										&node_ptr->centre_of_mass.pos);
 			centre_displ = sqrt (centre_displ);
 
-
+/*
 			if (centre_displ * COM_RESOLUTION <= node_ptr->side_len){
 				update_position = 0;
-			}
+			}*/
 			node_ptr->centre_of_mass = new_centre;
+		if (node_ptr->children[0] == NULL && node_ptr->centre_of_mass.mass >= 0.1){
+			assert (node_ptr->centre_of_mass.pos.x >= 0);	
+			assert (node_ptr->centre_of_mass.pos.y >= 0);
+			assert (node_ptr->centre_of_mass.pos.z >= 0);
+		}
+
 		}else{
 	
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
-//		dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
+	//	dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
 		node_ptr = node_ptr->parent;
 		
 	}
@@ -298,22 +311,32 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	node_ptr = dst;
 	update_position = 1;
 	for (;node_ptr != NULL;){
+		
+		if (node_ptr->centre_of_mass.mass < 0.1){
+			node_ptr->centre_of_mass = adj_mass;
+			node_ptr = node_ptr->parent;
+			continue;
+		}
+	
+		pmass_t old_centre = node_ptr->centre_of_mass;
 		if (update_position){
 			new_centre = centre_of_mass (&node_ptr->centre_of_mass,
 											   &adj_mass);
 			centre_displ = dist_between_points_sqrd (&new_centre.pos,
 										&node_ptr->centre_of_mass.pos);
 			centre_displ = sqrt (centre_displ);
-
+/*
 			if (centre_displ * COM_RESOLUTION <= node_ptr->side_len){
 				update_position = 0;
-			}
+			}*/
 			node_ptr->centre_of_mass = new_centre;
 		}else{
 		
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
-		
+		assert (node_ptr->centre_of_mass.pos.x >= 0);	
+		assert (node_ptr->centre_of_mass.pos.y >= 0);
+		assert (node_ptr->centre_of_mass.pos.z >= 0);
 //		dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
 		node_ptr = node_ptr->parent;
 	}
@@ -324,8 +347,14 @@ void check_constraints (otree_t* tree, int check_mass, int garbage_free){
 	int is_leaf = (tree->children[0] == NULL);	
 	floating_point mass = 0;
 	if (check_mass){
-		if (out_of_bound (tree, &tree->centre_of_mass.pos)){
-			if (tree->num_particles != 0) assert(!"WTF");
+		if (tree->centre_of_mass.mass >= 0.1){
+			assert (tree->centre_of_mass.pos.x >= 0);	
+			assert (tree->centre_of_mass.pos.y >= 0);
+			assert (tree->centre_of_mass.pos.z >= 0);
+
+			if (out_of_bound (tree, &tree->centre_of_mass.pos)){
+				assert(!"WTF");
+			}
 		}
 	}
 	if (is_leaf){

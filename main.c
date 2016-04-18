@@ -50,11 +50,11 @@ int main (int argc, char** argv){
 	}
 	
 	check_constraints(tree,1,1);
-
+	
 	
 
-	for (int j = 0; j < 1000; ++j){
-		printf("RELOCATING\n");
+	for (int j = 0; j < 10000; ++j){
+		//printf("RELOCATING\n");
 		get_leaves (tree, &leaf, 0, 1);
 	
 		int ind = rand() % leaf->num_particles;
@@ -71,18 +71,23 @@ int main (int argc, char** argv){
 		old_ptr->pos.z = z;
 		
 		pmass_t new_mass = *(pmass_t*)(leaf->particles->first->key);
-	
-		printf("mass of the moved particle: %lf\n", new_mass.mass);
-		fflush(stdout);
-
-		printf("total mass should not change or something must be wrong\n");
-		printf("old mass: %lf\n",tree->centre_of_mass.mass);	
+		printf ("====\n");	
+		printf ("leaf: %016x, pos, mass: (%lf, %lf, %lf), %lf\n",
+			leaf, old.pos.x, old.pos.y, old.pos.z, old.mass);	
+		printf ("old com: pos, mass: (%lf, %lf, %lf), %lf",
+				leaf->centre_of_mass.pos.x,leaf->centre_of_mass.pos.y,leaf->centre_of_mass.pos.z, leaf->centre_of_mass.mass);
+		printf ("====\n");	
 
 		otree_t* new_leaf = otree_relocate (leaf, leaf->particles->first);
 
 		check_constraints(tree,0,0);
-		otree_fix_com (leaf, new_leaf, &old, &new_mass);
-	printf("new mass: %lf\n", tree->centre_of_mass.mass);
+		if (new_leaf != leaf){
+			printf ("MOVED\n");
+			otree_fix_com (leaf, new_leaf, &old, &new_mass);
+		}else{
+			printf ("NOT MOVED\n");
+		}
+		printf("new mass: %lf\n", tree->centre_of_mass.mass);
 		check_constraints(tree,1,0);
 	
 
