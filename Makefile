@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -c -Wall -Werror -g  -std=gnu99 -include config.h
+CFLAGS = -c -Wall -g  -std=gnu99 -include config.h
 LD = $(CC)
 LDFLAGS = -lm -lmcheck
 

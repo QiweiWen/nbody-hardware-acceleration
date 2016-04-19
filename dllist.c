@@ -5,6 +5,13 @@
 #include <string.h>
 #include <assert.h>
 
+static int sane (dllist_t* lst){
+	if (lst->first && lst->last && lst->first != lst->last){
+		return (lst->last->last != NULL);
+	}
+	return 1;
+}
+
 dllist_t* new_dllist (void){
 	dllist_t* res = malloc (sizeof (dllist_t));
 	memset (res, 0, sizeof (dllist_t));
@@ -52,22 +59,31 @@ void	insert_dllist_link (dllist_t* list, dlnode_t* link){
 		list->last = link;
 	}
 	list->first = link;
+	assert (sane (list));
 }
 
 void  append_dllist (dllist_t* to, dllist_t* from){
+	assert (sane (to));
+	assert (sane (from));
 	if (from->num == 0) return;
 	to->num += from->num;
 	if (!to->first){
 		
 		to->first = from->first;
 		to->last = from->last;
+
+		assert (sane (to));
 		return;
 	}
 	to->last->next = from->first;
+	from->first->last = to->last;
 	to->last = from->last;
+
+	assert (sane (to));
 	from->num = 0;
 	from->first = NULL;
 	from->last = NULL;
+
 }
 
 void printdllist (dllist_t* lst, printfunc_t printfunc){
@@ -103,8 +119,12 @@ void dllist_delete_node (dllist_t* lst, dlnode_t* node, int free_node, freefunc_
 			lst->last = lst->last->last;
 			lst->last->next = NULL;
 		}else{
-			node->last->next = node->next;
-			node->next->last = node->last;	
+			if (node->last){
+				node->last->next = node->next;
+			}
+			if (node->next){
+				node->next->last = node->last;	
+			}
 		}
 
 		if (free_node){
@@ -114,4 +134,5 @@ void dllist_delete_node (dllist_t* lst, dlnode_t* node, int free_node, freefunc_
 			free (node);
 		}
 	}
+	assert (sane (lst));
 }

@@ -83,13 +83,13 @@ static int make_interaction_list (int barnes_hut, otree_t* currnode,
 		//is the node far enough?
 		int go_further = !barnes_hut || !far_far_away(origin, currnode);
 		if (go_further){
-			printf ("yeah\n");
+		
 			for (int i = 0; i < 8; ++i){
 				res += make_interaction_list (barnes_hut, currnode->children[i],origin,
 									  ilist,list_is_empty);
 			}
 		}else{
-			printf ("no\n");
+		
 			if (*list_is_empty){
 				add_list (&currnode->centre_of_mass, *ilist, IS_COM); 
 				*list_is_empty = 0;

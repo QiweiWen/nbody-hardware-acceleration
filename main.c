@@ -141,7 +141,7 @@ int main (int argc, char** argv){
 	years += (days / DAYS_IN_YEAR);	
 	days = days % DAYS_IN_YEAR;
 	
-	simulation (atoi(yearstring), atoi(daystring), atoi(secondstring), infile, animflag);	
+	simulation (years, days, seconds, infile, animflag);	
 
 	return 0;
 }

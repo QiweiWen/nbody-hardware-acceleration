@@ -14,7 +14,7 @@
 //for all particles under it to share the 
 //same interactio list
 #define GROUP_SIZE (OTREE_NODE_CAP * 5) 
-#define BH_THETA 0.2
+#define BH_THETA 0.4
 #define MIN_MASS 10
 
 #ifdef DEBUG

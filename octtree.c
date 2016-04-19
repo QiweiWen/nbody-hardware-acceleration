@@ -91,8 +91,8 @@ static void otree_collapse(otree_t* node){
 	//all these asserts:
 	//if these invariants break then we should
 	//fail noisily instead of silently
-	printf("collapsing %16lx\n", (unsigned long)node);
-	printf ("corner (%lf, %lf, %lf), com (%lf, %lf, %lf), %lf kg\n", 
+	dbprintf("collapsing %16lx\n", (unsigned long)node);
+	dbprintf ("corner (%lf, %lf, %lf), com (%lf, %lf, %lf), %lf kg\n", 
 			node->corner.x, node->corner.y, node->corner.z,
 			node->centre_of_mass.pos.x, node->centre_of_mass.pos.y,node->centre_of_mass.pos.z, node->centre_of_mass.mass);
 	assert (node->total_particles <= OTREE_NODE_CAP);
@@ -252,10 +252,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 {
 	otree_t* node_ptr = src;
 	pmass_t adj_mass = *old_part;
-	adj_mass. mass *= -1;
-	pmass_t new_centre;
-	floating_point centre_displ;
-	
+	adj_mass. mass *= -1;	
 	floating_point mass_diff;
 	for (;node_ptr != NULL;){
 		
@@ -266,13 +263,8 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 			node_ptr = node_ptr->parent;
 			continue;
 		}
-		
-		new_centre = centre_of_mass (&node_ptr->centre_of_mass,
+		node_ptr->centre_of_mass = centre_of_mass (&node_ptr->centre_of_mass,
 										   &adj_mass);
-		centre_displ = dist_between_points_sqrd (&new_centre.pos,
-									&node_ptr->centre_of_mass.pos);
-		centre_displ = sqrt (centre_displ);
-		node_ptr->centre_of_mass = new_centre;
 	
 		node_ptr = node_ptr->parent;
 		
@@ -287,12 +279,9 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 			node_ptr = node_ptr->parent;
 			continue;
 		}
-		new_centre = centre_of_mass (&node_ptr->centre_of_mass,
+	
+		node_ptr->centre_of_mass = centre_of_mass (&node_ptr->centre_of_mass,
 										   &adj_mass);
-		centre_displ = dist_between_points_sqrd (&new_centre.pos,
-									&node_ptr->centre_of_mass.pos);
-		centre_displ = sqrt (centre_displ);
-		node_ptr->centre_of_mass = new_centre;
 
 		node_ptr = node_ptr->parent;
 	}

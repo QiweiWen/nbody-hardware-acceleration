@@ -81,26 +81,23 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 							 (uint64_t)seconds;
 
 	if (node -> children[0] == NULL){
-		dlnode_t* curr = node->particles->first,
-				* last = curr;
+		dlnode_t* curr = node->particles->first,	
+				* next;
 		pmass_t old, new;
 		while (curr != NULL){
 			the_particle = (pmass_t*)curr->key;
-			last = curr;
+			next = curr->next;
 			old = *the_particle;
 			do_integration (the_particle, total_seconds);
 			new = *the_particle;
 
-			if (dump){
+			otree_t* new_leaf = otree_relocate (node, curr);
+			otree_fix_com (node, new_leaf, &old, &new);
+			if (dump && new_leaf){
 				assert (ofile);
 				fprintf (ofile, "(%.16lf, %.16lf, %.16lf)\n", the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
 			}
-			otree_t* new_leaf = otree_relocate (node, curr);
-			otree_fix_com (node, new_leaf, &old, &new);
-			if (new_leaf != node){
-				curr = last;
-			}
-			curr = curr->next;
+			curr = next;
 		}
 	}else{
 		for (int i = 0; i < 8; ++i){
@@ -164,8 +161,8 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 
 	floating_point universe_size = 0;
 	otree_t* the_tree;
-	pmass_t particle;
-	memset (&particle,0, sizeof (pmass_t)); 
+	pmass_t* particle;
+
 	while ((charread = getline (&heapbuf, &len, infile)) != -1){
 		if (linenum == 0){
 			sscanf (heapbuf,FFMT,&universe_size);
@@ -174,12 +171,13 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 		}else{
 			//the format string for the float type
 			//doesnt matter for output, but does for input
+			particle = malloc (sizeof(pmass_t));
 			sscanf (heapbuf, "("FFMT"," FFMT"," FFMT"," FFMT")",
-					&particle.pos.x, &particle.pos.y,
-					&particle.pos.z, &particle.mass);	
-			assert (particle.mass >= MIN_MASS);
-			print_pmass (&particle);	
-			otree_insert (the_tree,NULL, &particle, 1);	
+					&particle->pos.x, &particle->pos.y,
+					&particle->pos.z, &particle->mass);	
+			assert (particle->mass >= MIN_MASS);
+			print_pmass (particle);	
+			otree_insert (the_tree,NULL, particle, 1);	
 		}
 		++linenum;
 	}
