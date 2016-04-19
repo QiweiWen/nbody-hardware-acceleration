@@ -255,7 +255,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	adj_mass. mass *= -1;
 	pmass_t new_centre;
 	floating_point centre_displ;
-	int update_position = 1;
+	
 	floating_point mass_diff;
 	for (;node_ptr != NULL;){
 		
@@ -267,30 +267,19 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 			continue;
 		}
 		
-		if (update_position){
-			new_centre = centre_of_mass (&node_ptr->centre_of_mass,
-											   &adj_mass);
-			centre_displ = dist_between_points_sqrd (&new_centre.pos,
-										&node_ptr->centre_of_mass.pos);
-			centre_displ = sqrt (centre_displ);
-
-/*
-			if (centre_displ * COM_RESOLUTION <= node_ptr->side_len){
-				update_position = 0;
-			}*/
-			node_ptr->centre_of_mass = new_centre;
-
-		}else{
-	
-			node_ptr->centre_of_mass.mass += adj_mass.mass;
-		}
+		new_centre = centre_of_mass (&node_ptr->centre_of_mass,
+										   &adj_mass);
+		centre_displ = dist_between_points_sqrd (&new_centre.pos,
+									&node_ptr->centre_of_mass.pos);
+		centre_displ = sqrt (centre_displ);
+		node_ptr->centre_of_mass = new_centre;
 	
 		node_ptr = node_ptr->parent;
 		
 	}
 	adj_mass = *new_part;
 	node_ptr = dst;
-	update_position = 1;
+
 	for (;node_ptr != NULL;){
 		
 		if (node_ptr->centre_of_mass.mass < MIN_MASS){
@@ -298,23 +287,13 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 			node_ptr = node_ptr->parent;
 			continue;
 		}
-	
-	
-		if (update_position){
-			new_centre = centre_of_mass (&node_ptr->centre_of_mass,
-											   &adj_mass);
-			centre_displ = dist_between_points_sqrd (&new_centre.pos,
-										&node_ptr->centre_of_mass.pos);
-			centre_displ = sqrt (centre_displ);
-/*
-			if (centre_displ * COM_RESOLUTION <= node_ptr->side_len){
-				update_position = 0;
-			}*/
-			node_ptr->centre_of_mass = new_centre;
-		}else{
-		
-			node_ptr->centre_of_mass.mass += adj_mass.mass;
-		}
+		new_centre = centre_of_mass (&node_ptr->centre_of_mass,
+										   &adj_mass);
+		centre_displ = dist_between_points_sqrd (&new_centre.pos,
+									&node_ptr->centre_of_mass.pos);
+		centre_displ = sqrt (centre_displ);
+		node_ptr->centre_of_mass = new_centre;
+
 		node_ptr = node_ptr->parent;
 	}
 }

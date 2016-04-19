@@ -6,7 +6,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
-
+#include "simulation.h"
 
 extern uint64_t direct_sum_times;
 extern uint64_t direct_sum_total_len;
@@ -51,10 +51,6 @@ static int done (int tgt_yr, int tgt_d, int  tgt_s,
 	return 1;
 }
 
-#define DAYS_IN_YEAR 365
-#define SECS_IN_DAY  86400
-
-
 static inline void do_integration (pmass_t* particle, uint64_t total_seconds){
 	point_t added = particle->acc;
 	point_t old_vel = particle->vel;
@@ -76,8 +72,6 @@ static inline void do_integration (pmass_t* particle, uint64_t total_seconds){
 	vector_add (&particle->pos, &added);
 }
 
-//need to worry about units now.
-//bloody good fun
 //mass in kg, distance in metres, velocity in m/s
 //force in Newtons
 static void integrate (otree_t* node, int years, int days, int seconds, int dump, FILE* ofile){
@@ -87,20 +81,6 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 							 (uint64_t)seconds;
 
 	if (node -> children[0] == NULL){
-		/*
-		for (int i = 0; i < node->num_particles; ++i){
-			the_particle = &(node->particles[i]);
-			do_integration (the_particle, total_seconds);
-			if (dump){
-				assert (ofile);
-				fprintf (ofile, "(%.16lf, %.16lf, %.16lf)\n", the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
-			}
-			if (node != otree_relocate(node,i,NULL)){
-				//so the node just moved elsewhere	
-				i--;
-			}
-		}
-	*/
 		dlnode_t* curr = node->particles->first,
 				* last = curr;
 		pmass_t old, new;
@@ -197,6 +177,7 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 			sscanf (heapbuf, "("FFMT"," FFMT"," FFMT"," FFMT")",
 					&particle.pos.x, &particle.pos.y,
 					&particle.pos.z, &particle.mass);	
+			assert (particle.mass >= MIN_MASS);
 			print_pmass (&particle);	
 			otree_insert (the_tree,NULL, &particle, 1);	
 		}
