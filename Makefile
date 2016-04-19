@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -c -Wall -g  -std=gnu99 -include config.h
+CFLAGS = -c -Wall -Werror -g  -std=gnu99 -include config.h
 LD = $(CC)
 LDFLAGS = -lm -lmcheck
 
@@ -11,10 +11,10 @@ HEADERS = $(wildcard *.h)
 all: $(TARGET)
 	echo $(HEADERS)
 
-$(TARGET): $(OBJECTS) $(HEADERS)
+$(TARGET): $(OBJECTS)
 	$(LD) -o $@ $^ $(LDFLAGS) 
 
-%.o: %.c config.h
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) $< -o $@
 
 clean:	

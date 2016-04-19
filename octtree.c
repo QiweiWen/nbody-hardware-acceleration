@@ -67,13 +67,6 @@ static void otree_split (otree_t* node){
 		node->children[i]->corner = get_corner (node, i);
 	}
 
-/*
-	for (int i = 0; i < node->num_particles; ++i){
-		char index = childnum (node, &node->particles[i].pos);
-		assert (index != -1);
-		otree_insert(node->children[(int)index], &node->particles[i],1);
-	}
-	*/
 
 	dlnode_t* curr = node->particles->first,
 			* next;
@@ -83,11 +76,8 @@ static void otree_split (otree_t* node){
 		next = curr->next;
 		index = childnum (node, &((pmass_t*)(curr->key))->pos);
 		the_tree = node->children[(int)index];
-		//the_tree->num_particles++;
-		//the_tree->total_particles++;
-		//insert_dllist_link (the_tree->particles, curr);
-		point_t* pos = &((pmass_t*)(curr->key))->pos;
-	//	printf ("%lf, %lf, %lf\n", pos->x, pos->y, pos->z);
+	
+
 		otree_insert (the_tree, curr, curr->key, 1);
 		curr = next;
 	}	
@@ -101,7 +91,7 @@ static void otree_collapse(otree_t* node){
 	//all these asserts:
 	//if these invariants break then we should
 	//fail noisily instead of silently
-	printf("collapsing %16x\n", node);
+	printf("collapsing %16lx\n", (unsigned long)node);
 	printf ("corner (%lf, %lf, %lf), com (%lf, %lf, %lf), %lf kg\n", 
 			node->corner.x, node->corner.y, node->corner.z,
 			node->centre_of_mass.pos.x, node->centre_of_mass.pos.y,node->centre_of_mass.pos.z, node->centre_of_mass.mass);
@@ -185,7 +175,7 @@ void otree_free(otree_t* tree){
 	free(tree);
 }
 
-static void print_vector (point_t* vec){
+static void  __attribute__((unused)) print_vector (point_t* vec){
 	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
 }
 
@@ -266,11 +256,9 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	pmass_t new_centre;
 	floating_point centre_displ;
 	int update_position = 1;
-//	dbprintf("AFFECTED NODES\n");
-	//take away the influence of old particle from src and its ancestors
 	floating_point mass_diff;
 	for (;node_ptr != NULL;){
-		pmass_t old_centre = node_ptr->centre_of_mass;
+		
 		mass_diff = ABS(node_ptr->centre_of_mass.mass - old_part->mass);
 		
 		if (mass_diff < MIN_MASS){
@@ -291,22 +279,15 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 				update_position = 0;
 			}*/
 			node_ptr->centre_of_mass = new_centre;
-		if (node_ptr->children[0] == NULL && node_ptr->centre_of_mass.mass >= MIN_MASS){
-			assert (node_ptr->centre_of_mass.pos.x >= 0);	
-			assert (node_ptr->centre_of_mass.pos.y >= 0);
-			assert (node_ptr->centre_of_mass.pos.z >= 0);
-		}
 
 		}else{
 	
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
-	//	dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
+	
 		node_ptr = node_ptr->parent;
 		
 	}
-//	dbprintf("INSERTING BACK\n");
-	//add in the influence of the new particle to dest and its ancestors
 	adj_mass = *new_part;
 	node_ptr = dst;
 	update_position = 1;
@@ -318,7 +299,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 			continue;
 		}
 	
-		pmass_t old_centre = node_ptr->centre_of_mass;
+	
 		if (update_position){
 			new_centre = centre_of_mass (&node_ptr->centre_of_mass,
 											   &adj_mass);
@@ -334,10 +315,6 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 		
 			node_ptr->centre_of_mass.mass += adj_mass.mass;
 		}
-		assert (node_ptr->centre_of_mass.pos.x >= 0);	
-		assert (node_ptr->centre_of_mass.pos.y >= 0);
-		assert (node_ptr->centre_of_mass.pos.z >= 0);
-//		dbprintf("(0x%016x), %lf\n", node_ptr, node_ptr->centre_of_mass.mass);
 		node_ptr = node_ptr->parent;
 	}
 }

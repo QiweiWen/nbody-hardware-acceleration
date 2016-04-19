@@ -87,6 +87,7 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 							 (uint64_t)seconds;
 
 	if (node -> children[0] == NULL){
+		/*
 		for (int i = 0; i < node->num_particles; ++i){
 			the_particle = &(node->particles[i]);
 			do_integration (the_particle, total_seconds);
@@ -98,7 +99,29 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 				//so the node just moved elsewhere	
 				i--;
 			}
-		}	
+		}
+	*/
+		dlnode_t* curr = node->particles->first,
+				* last = curr;
+		pmass_t old, new;
+		while (curr != NULL){
+			the_particle = (pmass_t*)curr->key;
+			last = curr;
+			old = *the_particle;
+			do_integration (the_particle, total_seconds);
+			new = *the_particle;
+
+			if (dump){
+				assert (ofile);
+				fprintf (ofile, "(%.16lf, %.16lf, %.16lf)\n", the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
+			}
+			otree_t* new_leaf = otree_relocate (node, curr);
+			otree_fix_com (node, new_leaf, &old, &new);
+			if (new_leaf != node){
+				curr = last;
+			}
+			curr = curr->next;
+		}
 	}else{
 		for (int i = 0; i < 8; ++i){
 			integrate (node->children[i], years, days, seconds, dump, ofile);
@@ -175,7 +198,7 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 					&particle.pos.x, &particle.pos.y,
 					&particle.pos.z, &particle.mass);	
 			print_pmass (&particle);	
-			otree_insert (the_tree, &particle, 1);	
+			otree_insert (the_tree,NULL, &particle, 1);	
 		}
 		++linenum;
 	}

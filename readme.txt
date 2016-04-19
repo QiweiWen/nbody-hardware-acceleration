@@ -1,3 +1,16 @@
+1. how to compile
+==========================
 make to compile
 make clean to delete object files
-make run to run
+
+2. how to configure
+==========================
+edit config.h, make clean, make
+
+3. how to use
+=========================
+compile geninput.c
+./geninput world-size num-things max-mass min-mass > file
+./nbody -f file -y years -d days -s seconds [--anim]
+
+

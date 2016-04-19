@@ -13,10 +13,11 @@ List newList(void){
 	return l;
 }
 
-void add_list(void* newItem,List l){
+void add_list(void* newItem,List l,int id){
 
 	if (l->key == NULL){
 		l->key = newItem;
+		l->id = id;
 	}else{
 		List curr = l;
 		while (curr -> next != NULL){
@@ -25,6 +26,7 @@ void add_list(void* newItem,List l){
 		List newLink = (List)malloc(sizeof(struct _list));
 		newLink->key = newItem;
 		newLink->next = NULL;
+		newLink->id = id;
 		curr->next = newLink;
 	}
 }
@@ -59,20 +61,9 @@ void destroyList(List l,void (*foo)(void*)){
 	while (curr != NULL){
 		last = curr;
 		curr = curr->next;
-		if (last->key != NULL) foo(last->key);
+		if (last->key != NULL && foo) foo(last->key);
 		free(last);
 	}
-}
-
-void* list_get(int index,List l){
-	assert(index >= 0);
-	List curr = l;
-	while (curr != NULL && index > 0){
-		curr = curr->next;
-		index--;
-	}
-	if (curr == NULL) return NULL;
-	return curr->key;
 }
 
 void printList(List l,void (*foo)(void*)){
@@ -84,21 +75,6 @@ void printList(List l,void (*foo)(void*)){
 	printf("end\n");
 }
 
-void* list_findMatch(List l,int (*foo)(void*,void*),void* target){
-	List curr = l;
-	int found = 0;
-	while (!found && curr != NULL){
-		if (foo(curr->key,target)){
-			found = 1;
-		}else{
-			curr = curr->next;
-		}
-	}
-	if (curr != NULL) return curr->key;
-	return NULL;
-}
-
-
 void* list_getKey(List l){
 	return l->key;
 }
@@ -107,46 +83,12 @@ List list_pop(List l){
 	return l->next;
 }
 
-List list_push (List l,void* newItem){
+List list_push (List l,void* newItem, int id){
 	
 	List newLink = (List)malloc(sizeof (struct _list));
 	newLink->key = newItem;
+	newLink->id  = id;
 	newLink->next = l;
 	return newLink;
-}
-
-List list_insert(List l,void* newContent,comparator c){
-    List temp = l;
-    List last = temp;
-    while (temp != NULL){
-        if (!c(temp->key,newContent)){
-            break;
-        }
-        last = temp;
-        temp = temp->next;
-    }
-    List newLink = (List)malloc(sizeof(struct _list));
-    newLink->key = newContent;
-    if (temp == last){ // insert at front
-        newLink->next = l;
-        l = newLink;
-    }else if (temp == NULL){ //insert at the end
-        newLink->next = NULL;
-        last->next = newLink;
-    }else{
-        newLink->next = temp;
-        last->next = newLink;
-    }
-    return l;
-}
-
-int list_aggregate(List l, counter h){
-   List temp = l;
-   int result = 0;
-   while (temp != NULL){
-      result += h(temp->key);
-      temp = temp->next;
-   }
-   return result;
 }
 

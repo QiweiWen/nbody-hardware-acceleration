@@ -46,32 +46,6 @@ void test_inline_func(void){
 	printf("(%.16lf, %.16lf, %.16lf)\n", force.x, force.y, force.z);
 }
 
-void test_func(void){
-	test_inline_func();
-	srand (time(NULL));
-	otree_t* tree = otree_new (4096.0);
-	floating_point x, y, z, mass;
-
-	pmass_t part;
-	otree_t* leaf;
-
-//	test_inline_func();
-//	assert(0);
-
-	for (int i = 0; i < 100000; ++i){
-		x = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		y = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		z = 4095.0 * (floating_point)rand()/(floating_point)RAND_MAX;
-		mass = 1000 * (floating_point)rand()/(floating_point)RAND_MAX;
-		
-		part.pos.x = x, part.pos.y = y, part.pos.z = z;
-		part.mass  = mass;
-
-		leaf = otree_insert (tree,&part, 1); 
-	}
-	calculate_force(tree,tree);
-}
-
 
 #define printerr(...) fprintf(stderr, __VA_ARGS__)
 
@@ -80,17 +54,15 @@ static void print_help (void){
 			  "-y: years \n"
 			  "-d: days \n"
 			  "-s: seconds \n"
-			  "--anim: produce animation file \n"
-			  "--test: run test\n");	  
+			  "--anim: produce animation file \n");	  
 }
 
 
 int main (int argc, char** argv){
-	int testflag = 0,
-		animflag = 0;
+	int animflag = 0;
 	int animindex = -1;
 	for (int i = 0; i < argc; ++i){
-		if (!strcmp (argv[i],"--test")) testflag = 1;
+	
 		if (!strcmp (argv[i],"--anim")) {
 			animflag = 1;
 			animindex = i;
@@ -102,10 +74,6 @@ int main (int argc, char** argv){
 			argv[i] = argv[i + 1];
 		}
 		argc--;
-	}
-	if (testflag == 1) {
-		test_func();
-		return 0;
 	}
 
 	char* secondstring = "0";

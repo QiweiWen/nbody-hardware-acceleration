@@ -7,11 +7,14 @@
 #include "list.h"
 #include <stdint.h>
 
-static void print_vector (point_t* vec){
-	dbprintf("(%lf, %lf, %lf)\n", vec->x, vec->y, vec->z);
+#define IS_PARTICLE 1
+#define IS_COM      2
+
+static void __attribute__((unused)) print_vector (point_t* vec){
+	dbprintf("(%.16lf, %.16lf, %.16lf)\n", vec->x, vec->y, vec->z);
 }
 
-static void print_pmass (void* data){
+static void __attribute__((unused)) print_pmass (void* data){
 	pmass_t* part = (pmass_t*)data;
 	dbprintf("===\n");
 	dbprintf ("mass %lf\n",part->mass);
@@ -48,15 +51,6 @@ static inline int far_far_away(otree_t* node, otree_t* target){
 	floating_point width = target->side_len,
 				   dist  = sqrt(dist_between_points_sqrd(
 							   &tmp, &target->centre_of_mass.pos));
-	/*
-	if (width/dist > BH_THETA){
-		dbprintf("=================\n");
-		dbprintf("corner: (%lf, %lf, %lf)\n", tmp.x, tmp.y, tmp.z);
-		dbprintf("distant COM:");
-		print_pmass ((void*)&target->centre_of_mass);
-		dbprintf("width %lf, dist %lf, theta %lf\n", width, dist, width/dist);		
-	}
-	*/
 	return (width/dist <= BH_THETA);
 }
 
@@ -73,16 +67,15 @@ static int make_interaction_list (int barnes_hut, otree_t* currnode,
 	if (currnode->children[0] == NULL){
 		//leaf
 		//add all particles
-	
-		for (int i = 0; i < currnode->num_particles; ++i){
-			pmass_t* part_heap = malloc(sizeof(pmass_t));
-			*part_heap = currnode->particles[i];
+		for (dlnode_t* curr = currnode->particles->first;
+			curr != NULL; curr = curr->next)
+		{
 			if (*list_is_empty){
-				add_list (part_heap, *ilist);	
+				add_list (curr->key, *ilist, IS_PARTICLE); 
 				*list_is_empty = 0;
 			}else{
-				*ilist = list_push (*ilist,part_heap);	
-			}
+				*ilist = list_push (*ilist, curr->key, IS_PARTICLE);
+			}	
 			++res;
 		}
 	}else{
@@ -90,26 +83,23 @@ static int make_interaction_list (int barnes_hut, otree_t* currnode,
 		//is the node far enough?
 		int go_further = !barnes_hut || !far_far_away(origin, currnode);
 		if (go_further){
+			printf ("yeah\n");
 			for (int i = 0; i < 8; ++i){
 				res += make_interaction_list (barnes_hut, currnode->children[i],origin,
 									  ilist,list_is_empty);
 			}
 		}else{
-			pmass_t* part_heap = malloc(sizeof(pmass_t));
-			*part_heap = currnode->centre_of_mass;
+			printf ("no\n");
 			if (*list_is_empty){
-				add_list (part_heap, *ilist);
-				*list_is_empty = 0;	
+				add_list (&currnode->centre_of_mass, *ilist, IS_COM); 
+				*list_is_empty = 0;
 			}else{
-				*ilist = list_push (*ilist, part_heap);
-			}
+				*ilist = list_push (*ilist, &currnode->centre_of_mass, IS_COM);
+			}	
 			++res;
 		}	
 	}
 	return res;
-}
-static int yes (void* data) {
-	return 1;
 }
 
 uint64_t direct_sum_times = 0;
@@ -134,35 +124,35 @@ static void __attribute__ ((noinline)) sum_interaction_list (otree_t* node, List
 		vector_add (&(node->centre_of_mass.acc),&force);
 		head = list_pop(head);
 	}	
+	//print_vector (&node->centre_of_mass.acc);
 }
 
 static void direct_sum_force (otree_t* root, otree_t* currnode, List ilist){
 	if (currnode->children[0] == NULL){
 		//apply effect of ilist on every particle
-		for (int i = 0; i < currnode->num_particles; ++i){
-		//	dbprintf("%d\n", i);
+		for (dlnode_t* curr = currnode->particles->first;
+					   curr != NULL; curr = curr->next)
+		{
 			List head = ilist;
-			pmass_t* part;
+			pmass_t* part = (pmass_t*)curr->key;
 			point_t force;
-			currnode->particles[i].acc.x = 0;
-			currnode->particles[i].acc.y = 0;
-			currnode->particles[i].acc.z = 0;
-
+			part->acc.x = 0;
+			part->acc.y = 0;
+			part->acc.z = 0;
 			while (head != NULL){
-
-
 				part = (pmass_t*)head->key;
 				
-				if (vector_equal (&part->pos,&(currnode->particles[i].pos))){
+				if (vector_equal ( & ((pmass_t*)curr->key)->pos, &part->pos) ){
 					head = head->next;
-				   	continue;
-				}	
-				vector_gravity (&currnode->particles[i],part, &force);
-				vector_add (&(currnode->particles[i].acc), &force);
+					continue;
+				}
+				vector_gravity ((pmass_t*)curr->key, part, &force);
+				vector_add (& ((pmass_t*)curr->key)->acc, &force);
 				head = head->next;
 			}
-			vector_add (&(currnode->particles[i].acc),&(root->centre_of_mass.acc));
-		}	
+			vector_add (& ((pmass_t*)curr->key)->acc, &root->centre_of_mass.acc);	
+		//	print_vector (& ((pmass_t*)curr->key)->acc);
+		}
 	}else{
 		for (int i = 0; i < 8; ++i){
 			direct_sum_force (root, currnode->children[i], ilist);
@@ -180,7 +170,7 @@ static void direct_sum (otree_t* node){
 	if (!list_is_empty){
 		direct_sum_force (node, node, ilist);
 	}
-	destroyList (ilist, free);
+	destroyList (ilist, NULL);
 }
 
 void calculate_force (otree_t* root,otree_t* node){
@@ -192,8 +182,6 @@ void calculate_force (otree_t* root,otree_t* node){
 		group_times += 1;
 		int ridiculous = make_interaction_list (1, root, node, &ilist,&list_is_empty);
 		group_sum_total_len += ridiculous;
-
-	//	printf("ridiculous %d\n", ridiculous);
 		
 		//printf("%d\n", list_aggregate(ilist, yes)); 
 		//sum force
@@ -203,7 +191,7 @@ void calculate_force (otree_t* root,otree_t* node){
 		//use direct sum for the forces within a group
 		direct_sum (node);
 		//delete ilist
-		destroyList (ilist, free);
+		destroyList (ilist, NULL);
 	}else{
 		for (int i = 0; i < 8; ++i){
 			calculate_force (root,node->children[i]);
