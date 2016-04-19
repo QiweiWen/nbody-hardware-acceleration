@@ -50,8 +50,8 @@ int main (int argc, char** argv){
 	}
 	
 	check_constraints(tree,1,1);
-	
-	
+	calculate_force (tree, tree);
+	return 0;	
 
 	for (int j = 0; j < 10000; ++j){
 		//printf("RELOCATING\n");
