@@ -175,10 +175,6 @@ void otree_free(otree_t* tree){
 	free(tree);
 }
 
-static void  __attribute__((unused)) print_vector (point_t* vec){
-	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
-}
-
 otree_t* otree_relocate (otree_t* tree, dlnode_t* particle){
 	
 

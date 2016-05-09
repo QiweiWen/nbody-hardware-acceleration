@@ -13,9 +13,10 @@
 //maximum size of a node (not neccessarily leaf)
 //for all particles under it to share the 
 //same interactio list
-#define GROUP_SIZE (OTREE_NODE_CAP * 5) 
+#define GROUP_SIZE (OTREE_NODE_CAP * 3) 
 #define BH_THETA 0.4
 #define MIN_MASS 10
+//#define HWACCL
 
 #ifdef DEBUG
 #define dbprintf(...) printf(__VA_ARGS__)

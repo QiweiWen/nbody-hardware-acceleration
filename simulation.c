@@ -16,19 +16,6 @@ extern uint64_t group_sum_total_len;
 
 extern uint64_t sum_ilist_count;
 
-static void print_vector (point_t* vec){
-	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
-}
-
-static void print_pmass (void* data){
-	pmass_t* part = (pmass_t*)data;
-	dbprintf("===\n");
-	dbprintf ("mass %.20lf\n", part->mass);
-	dbprintf("coord: ");print_vector (&part->pos);
-	dbprintf("acc: ");print_vector (&part->acc);	
-	dbprintf("vel: ");print_vector (&part->vel);
-
-}
 
 static inline int cmp_int (int a, int b){
 	if (a < b) return -1;

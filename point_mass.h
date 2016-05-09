@@ -1,6 +1,6 @@
 #ifndef PMASS_H
 #define PMASS_H
-
+#include "config.h"
 #include <math.h>
 #ifdef USE_DOUBLE
 typedef double floating_point;
@@ -80,5 +80,19 @@ static inline void vector_add (point_t* res, point_t* other){
 
 static inline int vector_equal (point_t* a, point_t* b){
 	return (a->x == b->x && a->y == b->y && a->z == b->z);
+}
+
+static void __attribute__ ((unused)) print_vector (point_t* vec){
+	dbprintf("(%.20lf, %.20lf, %.20lf)\n", vec->x, vec->y, vec->z);
+}
+
+static void __attribute__ ((unused)) print_pmass (void* data){
+	pmass_t* part = (pmass_t*)data;
+	dbprintf("===\n");
+	dbprintf ("mass %.20lf\n", part->mass);
+	dbprintf("coord: ");print_vector (&part->pos);
+	dbprintf("acc: ");print_vector (&part->acc);	
+	dbprintf("vel: ");print_vector (&part->vel);
+
 }
 #endif

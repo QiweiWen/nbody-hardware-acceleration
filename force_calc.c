@@ -10,19 +10,6 @@
 #define IS_PARTICLE 1
 #define IS_COM      2
 
-static void __attribute__((unused)) print_vector (point_t* vec){
-	dbprintf("(%.16lf, %.16lf, %.16lf)\n", vec->x, vec->y, vec->z);
-}
-
-static void __attribute__((unused)) print_pmass (void* data){
-	pmass_t* part = (pmass_t*)data;
-	dbprintf("===\n");
-	dbprintf ("mass %lf\n",part->mass);
-	dbprintf("coord: ");print_vector (&part->pos);
-	dbprintf("acc: ");print_vector (&part->acc);	
-	dbprintf("vel: ");print_vector (&part->vel);
-
-}
 
 //node: the node for which we are constructing the ilist
 //
@@ -182,8 +169,7 @@ void calculate_force (otree_t* root,otree_t* node){
 		group_times += 1;
 		int ridiculous = make_interaction_list (1, root, node, &ilist,&list_is_empty);
 		group_sum_total_len += ridiculous;
-		
-		//printf("%d\n", list_aggregate(ilist, yes)); 
+			
 		//sum force
 		if (!list_is_empty){
 			sum_interaction_list (node, ilist);
