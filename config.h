@@ -1,7 +1,15 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define USE_DOUBLE
+//#define USE_DOUBLE
+
+#define HWACCL
+#ifdef HWACCL
+	#ifdef USE_DOUBLE
+		#error "use single precision for hwaccl"
+	#endif
+#endif
+
 //#define DEBUG
 #define ANIM
 #define TIMESTEP "0y10d0s"

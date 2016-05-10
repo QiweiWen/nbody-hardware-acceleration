@@ -17,6 +17,8 @@ typedef  struct point{
 	floating_point x,y,z;
 }point_t;
 
+typedef point_t vector_t;
+
 typedef struct pmass{
 	point_t pos;
 	point_t vel;
