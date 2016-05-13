@@ -7,6 +7,13 @@
 #include <assert.h>
 #include <stdint.h>
 #include "simulation.h"
+#include "assert.h"
+#ifdef HWACCL
+#include "hwaccl.h"
+#include <semaphore.h>
+#include <sys/sem.h>
+#include <pthread.h>
+#endif
 
 extern uint64_t direct_sum_times;
 extern uint64_t direct_sum_total_len;
@@ -15,7 +22,57 @@ extern uint64_t group_times;
 extern uint64_t group_sum_total_len;
 
 extern uint64_t sum_ilist_count;
+#ifdef HWACCL
+pthread_t ilist_threads [NUM_PROCESSORS];
+pthread_t summation_threads [NUM_PROCESSORS];
+pthread_mutex_t tree_biglock;
+//thread waits on "control" to start execution
+//main thread waits on "result" for end of computation
+sem_t     ilist_thread_control[NUM_PROCESSORS];
+sem_t     ilist_thread_result [NUM_PROCESSORS];
+sem_t     summation_thread_control[NUM_PROCESSORS];
+sem_t     summation_thread_result [NUM_PROCESSORS];
 
+static void* ilist_thread_entry (void* ptr_our_tid){
+	uint16_t our_tid = (uint16_t)ptr_our_tid;
+	assert (our_tid < NUM_PROCESSORS);
+	sem_t*   control = &ilist_thread_control [our_tid];
+	sem_t*   result = &ilist_thread_result [our_tid];
+	for (;;){
+		//wait for signal from main thread
+		sem_wait (control);
+		//perform computation
+
+		//report to main thread
+		sem_post (result);
+	}
+}
+
+static void* summation_thread_entry (void* ptr_our_tid){
+	uint16_t our_tid = (uint16_t)ptr_our_tid;
+	assert (our_tid < NUM_PROCESSORS);
+	sem_t*   control = &summation_thread_control [our_tid];
+	sem_t*   result = &summation_thread_result [our_tid];
+	for (;;){
+		//wait for signal from main thread
+		sem_wait (control);
+		//perform computation
+
+		//report to main thread
+		sem_post (result);
+	}
+}
+
+static void thread_init (void){
+	for (int i = 0; i < NUM_PROCESSORS; ++i){
+		sem_init (&ilist_thread_control [i]);
+		sem_init (&summation_thread_control [i]);
+		pthread_mutex_init (&tree_biglock);
+		pthread_create (&ilist_threads [i], NULL, ilist_thread_entry, i);
+		pthread_create (&summation_threads [i], NULL, summation_thread_entry, i);
+	}		
+}
+#endif
 
 static inline int cmp_int (int a, int b){
 	if (a < b) return -1;
@@ -168,6 +225,12 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 		}
 		++linenum;
 	}
+#ifdef HWACCL
+	int e_ilist_len = linenum * 0.3;
+	uint16_t writes_per_flush = e_ilist_len / 10;	
+	hwaccl_init (writes_per_flush);
+	thread_init();
+#endif
 	free (heapbuf);
 	run_simulation (years, days, seconds, the_tree, anim);
 	printf("direct sum: %llu, %llu\ngroup: %llu, %llu\nsum_ilst: %llu\n",

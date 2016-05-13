@@ -6,10 +6,23 @@
 #include <math.h>
 #include "list.h"
 #include <stdint.h>
+#include "hwaccl.h"
 
 #define IS_PARTICLE 1
 #define IS_COM      2
+#ifdef HWACCL
 
+extern pthread_t ilist_threads [NUM_PROCESSORS];
+extern pthread_t summation_threads [NUM_PROCESSORS];
+extern pthread_mutex_t tree_biglock;
+//thread waits on "control" to start execution
+//main thread waits on "result" for end of computation
+extern sem_t     ilist_thread_control[NUM_PROCESSORS];
+extern sem_t     ilist_thread_result [NUM_PROCESSORS];
+extern sem_t     summation_thread_control[NUM_PROCESSORS];
+extern sem_t     summation_thread_result [NUM_PROCESSORS];
+
+#endif
 
 //node: the node for which we are constructing the ilist
 //
@@ -184,3 +197,13 @@ void calculate_force (otree_t* root,otree_t* node){
 		}
 	}	
 }
+
+#ifdef HWACCL
+void hwaccl_calculate_force (uint16_t tid, otree* root){
+	int num = 8 / NUM_PROCESSORS;	
+	int start = tid* num;
+	for (int i = start; i < num; ++i){
+		calculate_force (root, root->children[i]);
+	}
+}
+#endif
