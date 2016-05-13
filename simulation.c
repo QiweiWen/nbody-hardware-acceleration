@@ -13,6 +13,7 @@
 #include <semaphore.h>
 #include <sys/sem.h>
 #include <pthread.h>
+#include <sys/types.h>
 #endif
 
 extern uint64_t direct_sum_times;
@@ -48,22 +49,6 @@ static void force_calc_threads_start (void){
 	}
 }
 
-static void* ilist_thread_entry (void* ptr_our_tid){
-	uint16_t our_tid = (uint16_t)(long)ptr_our_tid;
-	assert (our_tid < NUM_PROCESSORS);
-	sem_t*   control = &ilist_thread_control [our_tid];
-	sem_t*   result = &ilist_thread_result [our_tid];
-	for (;;){
-		//wait for signal from main thread
-		sem_wait (control);	
-		//perform computation
-		hwaccl_calculate_force (our_tid, the_tree);
-		//report to main thread
-		sem_post (result);
-	}
-	//not reached
-	return NULL;
-}
 
 typedef struct {
 	int years;
@@ -73,15 +58,45 @@ typedef struct {
 	FILE* ofile;
 	uint16_t tid;
 }sum_thread_ctrl_t;
+sum_thread_ctrl_t* sum_threadargs [NUM_PROCESSORS];
 
-static int integrate (otree_t* node, int years, int days, int seconds, int dump, FILE* ofile);
+static void summation_threads_start (int doprint){
+	for (int i = 0; i < NUM_PROCESSORS; ++i){
+		sum_threadargs [i]->dump = doprint;
+		sem_post (&summation_thread_control [i]);
+	}
+	
+	for (int i = 0; i < NUM_PROCESSORS; ++i){
+		sem_wait (&summation_thread_result [i]);
+	}
+}
+
+static void* ilist_thread_entry (void* ptr_our_tid){
+	uint16_t our_tid = (uint16_t)(long)ptr_our_tid;
+	assert (our_tid < NUM_PROCESSORS);
+	sem_t*   control = &ilist_thread_control [our_tid];
+	sem_t*   result = &ilist_thread_result [our_tid];
+	for (;;){
+		//wait for signal from main thread
+		sem_wait (control);	
+		//perform computation
+		//bogus	
+		hwaccl_calculate_force (our_tid, the_tree);
+		//report to main thread
+		sem_post (result);
+	}
+	//not reached
+	return NULL;
+}
+
+static void integrate (otree_t* node, int years, int days, int seconds, int dump, FILE* ofile);
 	
 static void hwaccl_integrate (sum_thread_ctrl_t* args){	
 	int num = 8 / NUM_PROCESSORS;	
 	int start = args->tid* num;
 
-	for (int i = start; i < num; ++i){
-		integrate (the_tree->children[i], 
+	for (int i = 0; i < num; ++i){
+		integrate (the_tree->children[i + start], 
 				   args->years, args->days, 
 				   args->seconds, args->dump, 
 				   args->ofile);
@@ -113,12 +128,13 @@ static void thread_init (int ts_years, int ts_days, int ts_secs, int anim, FILE*
 		pthread_spin_init (&tree_biglock, 1);
 		pthread_create (&ilist_threads [i], NULL, ilist_thread_entry, (void*)(long)i);
 		sum_thread_ctrl_t* thread_args = malloc (sizeof (sum_thread_ctrl_t));
+		sum_threadargs [i] = thread_args;
 		*thread_args = (sum_thread_ctrl_t)
 		{
 			.years = ts_years,
 			.days  = ts_days,
 			.seconds = ts_secs,
-			.dump = anim,
+			.dump = 0,
 			.ofile = ofile,
 			.tid = (uint16_t)i
 		};
@@ -176,12 +192,11 @@ static inline void do_integration (pmass_t* particle, uint64_t total_seconds){
 
 //mass in kg, distance in metres, velocity in m/s
 //force in Newtons
-static int integrate (otree_t* node, int years, int days, int seconds, int dump, FILE* ofile){
+static void integrate (otree_t* node, int years, int days, int seconds, int dump, FILE* ofile){
 	pmass_t* the_particle;
 	uint64_t total_seconds = (uint64_t)days * SECS_IN_DAY +
 							 (uint64_t)years * SECS_IN_DAY * DAYS_IN_YEAR +
-							 (uint64_t)seconds;
-	int printcount = 0;
+							 (uint64_t)seconds;	
 	if (node -> children[0] == NULL){
 		dlnode_t* curr = node->particles->first,	
 				* next;
@@ -210,7 +225,6 @@ static int integrate (otree_t* node, int years, int days, int seconds, int dump,
 #endif
 #endif	
 			the_particle = (pmass_t*)curr->key;
-			++printcount;
 			fprintf (ofile, "(%.16lf, %.16lf, %.16lf)\n", 
 						the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
 
@@ -223,10 +237,9 @@ static int integrate (otree_t* node, int years, int days, int seconds, int dump,
 		}
 	}else{
 		for (int i = 0; i < 8; ++i){
-			printcount += integrate (node->children[i], years, days, seconds, dump, ofile);
+			integrate (node->children[i], years, days, seconds, dump, ofile);
 		}
 	}
-	return printcount;
 }
 
 static void run_simulation (int years, int days, int seconds, otree_t* root, int anim){
@@ -235,6 +248,7 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 	assert (ts_secs < SECS_IN_DAY && ts_days < DAYS_IN_YEAR);
 
 	FILE* ofile = NULL;
+	int doprint = 0;
 #ifdef ANIM
 	if (anim){
 		ofile = fopen ("simfile", "w");
@@ -259,12 +273,17 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 #endif
 #ifdef ANIM	
 		if (anim && !(cycles % CYCLES_PER_WRITE)){
+			doprint = 1;
 			fprintf(ofile, "====\n");
 			fprintf(ofile, "time %dy%dd%ds\n", curr_years, curr_days, curr_secs);
-			int printcount = integrate (root, ts_years, ts_days, ts_secs, 1, ofile);
-		}else
+		}
 #endif
-		integrate (root, ts_years, ts_days, ts_secs, 0, NULL);
+//#ifndef HWACCL
+		integrate (root, ts_years, ts_days, ts_secs, doprint, ofile);
+//#else
+//		summation_threads_start (doprint);
+//#endif
+		if (doprint) doprint = 0;
 		//add the time step to the current time	
 		curr_secs += ts_secs;
 		if (curr_secs >= SECS_IN_DAY){
@@ -280,6 +299,7 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 		if (!(cycles % CYCLES_PER_GARBAGE_COLLECT)){
 			otree_garbage_collect (root);
 		}
+
 		//printf("%d years, %d days and %d secs have passed\n",curr_years,curr_days,curr_secs);
 		++cycles;
 	}	
@@ -316,6 +336,8 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 	}
 	free (heapbuf);
 	run_simulation (years, days, seconds, the_tree, anim);
+	printf ("number of particles remaining: %d\n", the_tree->total_particles);
+	check_constraints (the_tree, 0, 0);
 	printf("direct sum: %llu, %llu\ngroup: %llu, %llu\nsum_ilst: %llu\n",
 			direct_sum_total_len, direct_sum_times, group_sum_total_len, group_times, sum_ilist_count);
 }

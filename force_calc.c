@@ -210,8 +210,8 @@ void hwaccl_calculate_force (uint16_t tid, otree_t* root){
 	int num = 8 / NUM_PROCESSORS;	
 	int start = tid* num;
 
-	for (int i = start; i < num; ++i){
-		calculate_force (root, root->children[i]);
+	for (int i = 0; i < num; ++i){
+		calculate_force (root, root->children[i + start]);
 	}
 }
 #endif

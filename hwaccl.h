@@ -25,7 +25,7 @@ typedef struct {
 //small number = more syscalls overhead, more parallelism
 
 void hwaccl_init (uint16_t elements_per_write);
-uint16_t get_tid (void);
+
 void open_streams (uint16_t tid);
 void write_target (uint16_t tid, pmass_t* tgt);
 vector_t read_result (uint16_t tid);

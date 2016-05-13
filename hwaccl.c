@@ -41,10 +41,6 @@ void hwaccl_init (uint16_t num){
 	}
 }
 
-uint16_t get_tid (void){
-	uint16_t tid = __sync_fetch_and_add (&next_tid, 1);
-	return tid;
-}
 
 void write_target (uint16_t tid, pmass_t* tgt){
 	tcb_t tcb = threads [tid];

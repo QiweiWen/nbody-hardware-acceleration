@@ -200,12 +200,14 @@ otree_t* otree_relocate (otree_t* tree, dlnode_t* particle){
 			char index = childnum (tree, &((pmass_t*)(particle->key))->pos);
 			return otree_insert (tree->children[(int)index],particle,particle->key,0);
 		}else{
+			tree->total_particles--;
 			if (tree->parent == NULL){
 				//we are at the root node and it's still out of bound
 				//the thing has left the system
+				free (particle->key);
+				free (particle);
 				return NULL;
 			}
-			tree->total_particles--;
 			return otree_relocate (tree->parent, particle);	
 		}
 	}
