@@ -14,6 +14,9 @@
 #include <sys/sem.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <sched.h>
+#include <unistd.h>
+#include <errno.h>
 #endif
 
 extern uint64_t direct_sum_times;
@@ -26,7 +29,6 @@ extern uint64_t sum_ilist_count;
 static otree_t* the_tree;
 #ifdef HWACCL
 pthread_t ilist_threads [NUM_PROCESSORS];
-pthread_t summation_threads [NUM_PROCESSORS];
 pthread_spinlock_t tree_biglock;
 #ifdef ANIM
 pthread_spinlock_t ofile_lock;
@@ -34,10 +36,20 @@ pthread_spinlock_t ofile_lock;
 //thread waits on "control" to start execution
 //main thread waits on "result" for end of computation
 sem_t     ilist_thread_control[NUM_PROCESSORS];
-sem_t     ilist_thread_result [NUM_PROCESSORS];
-sem_t     summation_thread_control[NUM_PROCESSORS];
-sem_t     summation_thread_result [NUM_PROCESSORS];
+sem_t     ilist_thread_result[NUM_PROCESSORS];
 
+static int stick_this_thread_to_core(int core_id) {
+   int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+   if (core_id < 0 || core_id >= num_cores)
+      return EINVAL;
+
+   cpu_set_t cpuset;
+   CPU_ZERO(&cpuset);
+   CPU_SET(core_id, &cpuset);
+
+   pthread_t current_thread = pthread_self();    
+   return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+}
 
 static void force_calc_threads_start (void){
 	for (int i = 0; i < NUM_PROCESSORS; ++i){
@@ -49,30 +61,9 @@ static void force_calc_threads_start (void){
 	}
 }
 
-
-typedef struct {
-	int years;
-	int days;
-	int seconds;
-	int dump;
-	FILE* ofile;
-	uint16_t tid;
-}sum_thread_ctrl_t;
-sum_thread_ctrl_t* sum_threadargs [NUM_PROCESSORS];
-
-static void summation_threads_start (int doprint){
-	for (int i = 0; i < NUM_PROCESSORS; ++i){
-		sum_threadargs [i]->dump = doprint;
-		sem_post (&summation_thread_control [i]);
-	}
-	
-	for (int i = 0; i < NUM_PROCESSORS; ++i){
-		sem_wait (&summation_thread_result [i]);
-	}
-}
-
 static void* ilist_thread_entry (void* ptr_our_tid){
 	uint16_t our_tid = (uint16_t)(long)ptr_our_tid;
+	stick_this_thread_to_core ((int)our_tid);
 	assert (our_tid < NUM_PROCESSORS);
 	sem_t*   control = &ilist_thread_control [our_tid];
 	sem_t*   result = &ilist_thread_result [our_tid];
@@ -89,58 +80,12 @@ static void* ilist_thread_entry (void* ptr_our_tid){
 	return NULL;
 }
 
-static void integrate (otree_t* node, int years, int days, int seconds, int dump, FILE* ofile);
-	
-static void hwaccl_integrate (sum_thread_ctrl_t* args){	
-	int num = 8 / NUM_PROCESSORS;	
-	int start = args->tid* num;
-
-	for (int i = 0; i < num; ++i){
-		integrate (the_tree->children[i + start], 
-				   args->years, args->days, 
-				   args->seconds, args->dump, 
-				   args->ofile);
-	}
-}
-
-static void* summation_thread_entry (void* arg){
-	sum_thread_ctrl_t* threadargs = (sum_thread_ctrl_t*)arg;
-	uint16_t our_tid = (uint16_t)threadargs->tid;
-
-	sem_t*   control = &summation_thread_control [our_tid];
-	sem_t*   result = &summation_thread_result [our_tid];
-	for (;;){
-		//wait for signal from main thread
-		sem_wait (control);
-		//perform computation
-		hwaccl_integrate (arg);
-		//report to main thread
-		sem_post (result);
-	}
-	//not reached
-	return NULL;
-}
 
 static void thread_init (int ts_years, int ts_days, int ts_secs, int anim, FILE* ofile){
 	for (int i = 0; i < NUM_PROCESSORS; ++i){
 		sem_init (&ilist_thread_control [i], 1, 0);
-		sem_init (&summation_thread_control [i], 1, 0);
 		pthread_spin_init (&tree_biglock, 1);
 		pthread_create (&ilist_threads [i], NULL, ilist_thread_entry, (void*)(long)i);
-		sum_thread_ctrl_t* thread_args = malloc (sizeof (sum_thread_ctrl_t));
-		sum_threadargs [i] = thread_args;
-		*thread_args = (sum_thread_ctrl_t)
-		{
-			.years = ts_years,
-			.days  = ts_days,
-			.seconds = ts_secs,
-			.dump = 0,
-			.ofile = ofile,
-			.tid = (uint16_t)i
-		};
-
-		pthread_create (&summation_threads [i], NULL, 
-				summation_thread_entry, (void*)thread_args);
 #ifdef ANIM
 		pthread_spin_init (&ofile_lock, 1);
 #endif
@@ -207,14 +152,8 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 			old = *the_particle;
 			do_integration (the_particle, total_seconds);
 			new = *the_particle;
-#ifdef HWACCL
-			pthread_spin_lock (&tree_biglock);
-#endif
 			otree_t* new_leaf = otree_relocate (node, curr);	
 			otree_fix_com (node, new_leaf, &old, &new);
-#ifdef HWACCL
-			pthread_spin_unlock (&tree_biglock);
-#endif	
 			curr = next;
 		}
 		curr = node->particles->first;
@@ -278,11 +217,8 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 			fprintf(ofile, "time %dy%dd%ds\n", curr_years, curr_days, curr_secs);
 		}
 #endif
-//#ifndef HWACCL
+
 		integrate (root, ts_years, ts_days, ts_secs, doprint, ofile);
-//#else
-//		summation_threads_start (doprint);
-//#endif
 		if (doprint) doprint = 0;
 		//add the time step to the current time	
 		curr_secs += ts_secs;
