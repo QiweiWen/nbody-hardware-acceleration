@@ -22,7 +22,7 @@ static const char* writing_streams[NUM_PROCESSORS][NUM_PIPELINES_PER_CPU]
 static const char* reading_streams[NUM_PROCESSORS][NUM_PIPELINES_PER_CPU]
 = {{"cpu0_ifile0", "cpu0_ifile1"}, {"cpu1_ifile0", "cpu1_ifile1"}};
 
-static void open_streams (uint16_t tid){
+void open_streams (uint16_t tid){
 	tcb_t tcb __attribute__ ((unused)) = threads [tid];
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
 		tcb.streams [i] = open (writing_streams [tid][i], O_WRONLY);
@@ -50,7 +50,9 @@ void write_target (uint16_t tid, pmass_t* tgt){
 	tcb_t tcb = threads [tid];
 	float buff[4] = {tgt->pos.x, tgt->pos.y, tgt->pos.z, tgt->mass};
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		write (tcb.streams[i],buff, 4 * sizeof (float)); 
+		size_t len = 4 * sizeof (float);
+		ssize_t written = write (tcb.streams[i],buff, len);
+		assert(written == len);
 	}
 }
 //THIS IS A BLOCKING OPERATION
@@ -94,7 +96,9 @@ static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
 		int stream_to_use = tcb. stream_index;
 		int fd = tcb.streams [stream_to_use];
 		stream_to_use = (stream_to_use + 1) % NUM_PIPELINES_PER_CPU;
-		write (fd, buffer, currindexes[tid] * 4 * sizeof(float));
+		size_t len = currindexes[tid] * 4 * sizeof(float);
+		ssize_t written = write (fd, buffer, len);
+		assert (written == len);
 		currindexes [tid] = 0;
 	}
 }

@@ -133,6 +133,11 @@ int main (int argc, char** argv){
 		printf("Failed to open file %s\n", filename);
 		exit (1);
 	}
+	if (animflag){
+#ifndef ANIM
+		#error "the --anim flag needs the optioned \"ANIM\" enabled in config.h"
+#endif
+	}
 	//re-format the input time
 	int years = atoi (yearstring), days = atoi (daystring), seconds = atoi (secondstring);
 	days += (seconds / SECS_IN_DAY);

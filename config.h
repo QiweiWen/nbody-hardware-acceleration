@@ -3,7 +3,7 @@
 
 //#define USE_DOUBLE
 
-#define HWACCL
+//#define HWACCL
 #ifdef HWACCL
 	#ifdef USE_DOUBLE
 		#error "use single precision for hwaccl"

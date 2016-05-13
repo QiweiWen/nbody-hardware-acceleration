@@ -26,7 +26,7 @@ typedef struct {
 
 void hwaccl_init (uint16_t elements_per_write);
 uint16_t get_tid (void);
-
+void open_streams (uint16_t tid);
 void write_target (uint16_t tid, pmass_t* tgt);
 vector_t read_result (uint16_t tid);
 void add_to_buffer (uint16_t tid, pmass_t* part);

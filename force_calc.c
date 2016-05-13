@@ -8,6 +8,13 @@
 #include <stdint.h>
 #include "hwaccl.h"
 
+#ifdef HWACCL
+#include "hwaccl.h"
+#include <semaphore.h>
+#include <sys/sem.h>
+#include <pthread.h>
+#endif
+
 #define IS_PARTICLE 1
 #define IS_COM      2
 #ifdef HWACCL
@@ -199,9 +206,10 @@ void calculate_force (otree_t* root,otree_t* node){
 }
 
 #ifdef HWACCL
-void hwaccl_calculate_force (uint16_t tid, otree* root){
+void hwaccl_calculate_force (uint16_t tid, otree_t* root){
 	int num = 8 / NUM_PROCESSORS;	
 	int start = tid* num;
+
 	for (int i = start; i < num; ++i){
 		calculate_force (root, root->children[i]);
 	}
