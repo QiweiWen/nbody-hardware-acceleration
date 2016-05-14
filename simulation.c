@@ -77,6 +77,10 @@ static void thread_init (int ts_years, int ts_days, int ts_secs, int anim, FILE*
 		pthread_create (&ilist_threads [i], NULL, ilist_thread_entry, (void*)(long)i);
 	}		
 }
+#endif //multiprocessors
+
+#ifdef HWACCL
+size_t ilist_stats [NUM_PROCESSORS];
 #endif
 
 static inline int cmp_int (int a, int b){
@@ -190,6 +194,15 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 #else
 		force_calc_threads_start();
 #endif
+#ifdef HWACCL
+		uint32_t ilistlen_sum = 0;
+		for (int i = 0; i < NUM_PROCESSORS; ++i){	
+			ilistlen_sum += ilist_stats [i];
+		}
+		ilistlen_sum /= NUM_PROCESSORS;
+		update_ilist_len (ilistlen_sum);
+
+#endif
 #ifdef ANIM	
 		if (anim && !(cycles % CYCLES_PER_WRITE)){
 			doprint = 1;
@@ -236,7 +249,7 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 		if (linenum == 0){
 			sscanf (heapbuf,FFMT,&universe_size);
 			the_tree = otree_new (universe_size);
-			dbprintf("universe size %lf\n", universe_size);
+			
 		}else{
 			//the format string for the float type
 			//doesnt matter for output, but does for input
@@ -244,8 +257,7 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 			sscanf (heapbuf, "("FFMT"," FFMT"," FFMT"," FFMT")",
 					&particle->pos.x, &particle->pos.y,
 					&particle->pos.z, &particle->mass);	
-			assert (particle->mass >= MIN_MASS);
-			print_pmass (particle);	
+			assert (particle->mass >= MIN_MASS);	
 			otree_insert (the_tree,NULL, particle, 1);	
 		}
 		++linenum;

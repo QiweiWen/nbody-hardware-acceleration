@@ -67,7 +67,7 @@ static int make_interaction_list (int barnes_hut, otree_t* currnode,
 		*ilist = newList();
 	}
 	if (currnode == origin) return 0;
-	if (currnode->centre_of_mass.mass < 0.1) return 0;	
+	if (currnode->centre_of_mass.mass < MIN_MASS) return 0;	
 	if (currnode->children[0] == NULL){
 		//leaf
 		//add all particles
@@ -168,7 +168,7 @@ static void direct_sum (otree_t* node){
 }
 
 void calculate_force (otree_t* root,otree_t* node){
-	assert(node);
+	if (!node) return;	
 
 	if (node->total_particles < GROUP_SIZE){
 		List ilist = NULL;
@@ -191,14 +191,39 @@ void calculate_force (otree_t* root,otree_t* node){
 }
 
 #ifdef HWACCL
-void hwaccl_make_ilist (uint16_t tid, otree_t* currnode, otree_t* target);
+extern size_t ilist_stats[NUM_PROCESSORS];
+static size_t hwaccl_make_ilist (uint16_t tid, otree_t* currnode, otree_t* target){
+	size_t res = 0;
+	if (currnode == target) return 0;
+	if (currnode->centre_of_mass.mass < MIN_MASS) return 0;
+	if (currnode->children[0] == NULL){
+		for (dlnode_t* curr = currnode->particles->first;
+				curr != NULL; curr = curr->next)
+		{
+			++res;
+			add_to_buffer (tid, curr->key);
+		}
+	}else{
+		int go_further = !far_far_away (target, currnode);
+		if (go_further){
+			for (int i = 0; i < 8; ++i){
+				res += hwaccl_make_ilist (tid, currnode->children[i], target);
+			}
+		}else{
+			add_to_buffer (tid, &currnode->centre_of_mass);
+		}
+	}
+	return res;
+}
 void hwaccl_calculate_force (uint16_t tid, otree_t* root, otree_t* node){
-	assert (node);
+	if (!node) return;	
 	if (node->total_particles < GROUP_SIZE){
-		write_tgt (tid, &node->centre_of_mass);		
-		hwaccl_make_ilist (tid, root, node);
+		write_target (tid, &node->centre_of_mass);		
+		size_t ilistlen = hwaccl_make_ilist (tid, root, node);
+		ilist_stats [tid] = ilistlen;	
 		flush_to_dma (tid);
 		vector_t force = read_result (tid);
+		//vector_t force = {0,0,0};
 		node->centre_of_mass.acc = force;
 		direct_sum (node);
 	}else{

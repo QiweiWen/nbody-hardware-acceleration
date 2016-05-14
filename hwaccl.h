@@ -9,7 +9,7 @@
 //1MB is much more than enough but WTH
 #define RAMBUFF_SIZE (1<<20)
 #define NUM_PIPELINES_PER_CPU 2
-#define ENTRY_SIZE 16 
+#define BUFFER_ENTRY_SIZE 16 
 #define CACHELINESIZE 64
 //for a CPU to have potentially more pipeline units than one
 //write elements of an interaction list into all of them
@@ -26,11 +26,11 @@ typedef struct {
 
 void hwaccl_init (void);
 
-void open_streams (uint16_t tid);
+void open_streams (uint16_t tid, int, int);
 void write_target (uint16_t tid, pmass_t* tgt);
 vector_t read_result (uint16_t tid);
 void add_to_buffer (uint16_t tid, pmass_t* part);
 void flush_to_dma (uint16_t tid);
-void close_streams (uint16_t tid);
+void close_streams (uint16_t tid, int, int);
 void update_ilist_len (size_t newlen);
 #endif

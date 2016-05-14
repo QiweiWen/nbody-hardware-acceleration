@@ -1,8 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
-
+#include <stdio.h>
 //#define USE_DOUBLE
-#define NUM_PROCESSORS 2
+#define NUM_PROCESSORS 1
 #define HWACCL
 #ifdef HWACCL
 	#ifdef USE_DOUBLE
@@ -22,6 +22,9 @@
 //for all particles under it to share the 
 //same interactio list
 #define GROUP_SIZE (OTREE_NODE_CAP * 3) 
+#if (GROUP_SIZE < OTREE_NODE_CAP)
+	#error "GROUP SIZE must be larger than leaf node size"
+#endif
 #define BH_THETA 0.4
 #define MIN_MASS 10
 

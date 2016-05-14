@@ -11,7 +11,6 @@
 
 static uint16_t elements_per_write = 200;
 static char* bytebuffers [NUM_PROCESSORS];
-static uint16_t next_tid = 0;
 float* buffers [NUM_PROCESSORS];
 static uint16_t currindexes [NUM_PROCESSORS];
 static tcb_t threads [NUM_PROCESSORS];
@@ -22,12 +21,14 @@ static const char* writing_streams[NUM_PROCESSORS][NUM_PIPELINES_PER_CPU]
 static const char* reading_streams[NUM_PROCESSORS][NUM_PIPELINES_PER_CPU]
 = {{"cpu0_ifile0", "cpu0_ifile1"}, {"cpu1_ifile0", "cpu1_ifile1"}};
 
-void open_streams (uint16_t tid){
+void open_streams (uint16_t tid, int reading, int writing){
 	tcb_t* tcb  = &threads [tid];
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		tcb->streams [i] = open (writing_streams [tid][i], O_WRONLY);
-		tcb->reading_streams [i] = open 
-			(reading_streams[tid][i], O_RDONLY);
+		if (writing)
+			tcb->streams [i] = open (writing_streams [tid][i], O_WRONLY);
+		if (reading)
+			tcb->reading_streams [i] = open 
+				(reading_streams[tid][i], O_RDONLY);
 	}	
 }
 
@@ -38,17 +39,18 @@ void hwaccl_init (void){
 		buffers [i] = (float*)bytebuffers [i];
 		currindexes [i] = 0;
 		threads [i].stream_index = 0;;	
+		open_streams (i, 1, 0);
 	}
 }
 
 
 void write_target (uint16_t tid, pmass_t* tgt){
-	open_streams (tid);
+	open_streams (tid, 0, 1);
 	tcb_t* tcb = &threads [tid];
-	float buff[4] = {tgt->pos.x, tgt->pos.y, tgt->pos.z};
+	float buff[3] = {tgt->pos.x, tgt->pos.y, tgt->pos.z};
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
 		size_t len = 3 * sizeof (float);
-		ssize_t written = write (tcb->streams[i],buff, len);
+		ssize_t written = write (tcb->streams[i],buff, len);	
 		assert(written == len);
 	}
 }
@@ -89,16 +91,21 @@ static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
 		currindexes [tid]++;
 	}
 	if (force_flush || currindexes [tid] == elements_per_write){
-		//flush
+
+		//flush to dma buffer
 		int stream_to_use = tcb-> stream_index;
+
 		int fd = tcb->streams [stream_to_use];
-		stream_to_use = (stream_to_use + 1) % NUM_PIPELINES_PER_CPU;
+		tcb->stream_index = (tcb->stream_index + 1)%NUM_PIPELINES_PER_CPU;
+
 		size_t len = currindexes[tid] * 4 * sizeof(float);
 		ssize_t written = write (fd, buffer, len);
+		
 		assert (written == len);
 		currindexes [tid] = 0;
 		if (force_flush){
-			close_streams (tid);
+			//flush from dma buffers downstream
+			close_streams (tid, 0, 1);
 		}
 	}
 }
@@ -111,15 +118,19 @@ void flush_to_dma (uint16_t tid){
 	add_to_buffer_custom (tid, NULL, 1);
 }
 
-void close_streams (uint16_t tid){
+void close_streams (uint16_t tid, int reading, int writing){
 	tcb_t* tcb = &threads [tid];
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		close (tcb->streams [i]);
-		close (tcb->reading_streams [i]);
+		if (writing) 
+			close (tcb->streams [i]);
+		if (reading) 
+			close (tcb->reading_streams [i]);
 	}
 }
 
 //not threadsafe; call in serial code only
 void update_ilist_len (size_t newlen){
 	elements_per_write = newlen / 10;
+	assert (elements_per_write < RAMBUFF_SIZE/BUFFER_ENTRY_SIZE);  
+	dbprintf ("NEW PARTS PER WRITE: %hu\n", elements_per_write);
 }
