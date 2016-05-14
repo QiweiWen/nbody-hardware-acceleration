@@ -190,13 +190,35 @@ void calculate_force (otree_t* root,otree_t* node){
 	}	
 }
 
+#ifdef HWACCL
+void hwaccl_make_ilist (uint16_t tid, otree_t* currnode, otree_t* target);
+void hwaccl_calculate_force (uint16_t tid, otree_t* root, otree_t* node){
+	assert (node);
+	if (node->total_particles < GROUP_SIZE){
+		write_tgt (tid, &node->centre_of_mass);		
+		hwaccl_make_ilist (tid, root, node);
+		flush_to_dma (tid);
+		vector_t force = read_result (tid);
+		node->centre_of_mass.acc = force;
+		direct_sum (node);
+	}else{
+		for (int i = 0; i < 8; ++i){
+			hwaccl_calculate_force (tid, root, node->children[i]);
+		}
+	}
+}
+#endif
+
 #if NUM_PROCESSORS > 1
-void hwaccl_calculate_force (uint16_t tid, otree_t* root){
+void multithread_calculate_force (uint16_t tid, otree_t* root){
 	int num = 8 / NUM_PROCESSORS;	
 	int start = tid* num;
-
 	for (int i = 0; i < num; ++i){
+#ifdef HWACCL
+		hwaccl_calculate_force (tid, root, root->children [i + start]);
+#else
 		calculate_force (root, root->children[i + start]);
+#endif
 	}
 }
 #endif

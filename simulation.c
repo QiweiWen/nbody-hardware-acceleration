@@ -62,7 +62,7 @@ static void* ilist_thread_entry (void* ptr_our_tid){
 		sem_wait (control);	
 		//perform computation
 		//bogus	
-		hwaccl_calculate_force (our_tid, the_tree);
+		multithread_calculate_force (our_tid, the_tree);
 		//report to main thread
 		sem_post (result);
 	}
@@ -182,7 +182,11 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 	int cycles = 0;
 	while (!done(years, days, seconds, curr_years, curr_days, curr_secs)){
 #if NUM_PROCESSORS < 2
+	#ifndef HWACCL
 		calculate_force (root, root);
+	#else
+		hwaccl_calculate_force (0, root, root);
+	#endif
 #else
 		force_calc_threads_start();
 #endif

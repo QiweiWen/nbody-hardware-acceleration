@@ -45,9 +45,9 @@ void hwaccl_init (void){
 void write_target (uint16_t tid, pmass_t* tgt){
 	open_streams (tid);
 	tcb_t* tcb = &threads [tid];
-	float buff[4] = {tgt->pos.x, tgt->pos.y, tgt->pos.z, tgt->mass};
+	float buff[4] = {tgt->pos.x, tgt->pos.y, tgt->pos.z};
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		size_t len = 4 * sizeof (float);
+		size_t len = 3 * sizeof (float);
 		ssize_t written = write (tcb->streams[i],buff, len);
 		assert(written == len);
 	}
