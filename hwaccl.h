@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include "point_mass.h"
-#define NUM_PROCESSORS 2
+
 //this is a buffer in cacheable ram which will hold a number of
 //interaction list elements before dumping it to the devfile
 //1MB is much more than enough but WTH
@@ -15,7 +15,7 @@
 //write elements of an interaction list into all of them
 //round robin
 typedef struct {
-	pthread_t thread;	
+
 	int streams [NUM_PIPELINES_PER_CPU];
 	int stream_index;
 	int reading_streams [NUM_PIPELINES_PER_CPU];
@@ -24,7 +24,7 @@ typedef struct {
 //large number = fewer syscalls, less parallelism
 //small number = more syscalls overhead, more parallelism
 
-void hwaccl_init (uint16_t elements_per_write);
+void hwaccl_init (void);
 
 void open_streams (uint16_t tid);
 void write_target (uint16_t tid, pmass_t* tgt);
@@ -32,4 +32,5 @@ vector_t read_result (uint16_t tid);
 void add_to_buffer (uint16_t tid, pmass_t* part);
 void flush_to_dma (uint16_t tid);
 void close_streams (uint16_t tid);
+void update_ilist_len (size_t newlen);
 #endif

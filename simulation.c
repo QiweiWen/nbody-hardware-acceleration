@@ -10,6 +10,7 @@
 #include "assert.h"
 #ifdef HWACCL
 #include "hwaccl.h"
+#endif
 #include <semaphore.h>
 #include <sys/sem.h>
 #include <pthread.h>
@@ -17,22 +18,11 @@
 #include <sched.h>
 #include <unistd.h>
 #include <errno.h>
-#endif
 
-extern uint64_t direct_sum_times;
-extern uint64_t direct_sum_total_len;
 
-extern uint64_t group_times;
-extern uint64_t group_sum_total_len;
-
-extern uint64_t sum_ilist_count;
 static otree_t* the_tree;
-#ifdef HWACCL
+#if NUM_PROCESSORS > 1
 pthread_t ilist_threads [NUM_PROCESSORS];
-pthread_spinlock_t tree_biglock;
-#ifdef ANIM
-pthread_spinlock_t ofile_lock;
-#endif
 //thread waits on "control" to start execution
 //main thread waits on "result" for end of computation
 sem_t     ilist_thread_control[NUM_PROCESSORS];
@@ -83,12 +73,8 @@ static void* ilist_thread_entry (void* ptr_our_tid){
 
 static void thread_init (int ts_years, int ts_days, int ts_secs, int anim, FILE* ofile){
 	for (int i = 0; i < NUM_PROCESSORS; ++i){
-		sem_init (&ilist_thread_control [i], 1, 0);
-		pthread_spin_init (&tree_biglock, 1);
+		sem_init (&ilist_thread_control [i], 1, 0);	
 		pthread_create (&ilist_threads [i], NULL, ilist_thread_entry, (void*)(long)i);
-#ifdef ANIM
-		pthread_spin_init (&ofile_lock, 1);
-#endif
 	}		
 }
 #endif
@@ -158,20 +144,10 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 		}
 		curr = node->particles->first;
 		while (dump && curr){				
-#ifdef HWACCL
-#ifdef ANIM
-			pthread_spin_lock (&ofile_lock);
-#endif
-#endif	
 			the_particle = (pmass_t*)curr->key;
 			fprintf (ofile, "(%.16lf, %.16lf, %.16lf)\n", 
 						the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
 
-#ifdef HWACCL
-#ifdef ANIM
-			pthread_spin_unlock (&ofile_lock);
-#endif
-#endif
 			curr = curr->next;
 		}
 	}else{
@@ -194,18 +170,18 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 		fprintf (ofile, "%lf\n", root->side_len);
 	}	
 #endif
-
 #ifdef HWACCL
-	int e_ilist_len = root->total_particles * 0.3;
-	uint16_t writes_per_flush = e_ilist_len / 10;	
-	hwaccl_init (writes_per_flush);
+	hwaccl_init ();
+#endif
+
+#if NUM_PROCESSORS > 1
 	thread_init(ts_years, ts_days, ts_secs, anim, ofile);
 #endif
 
 	int curr_years = 0, curr_days = 0, curr_secs = 0;
 	int cycles = 0;
 	while (!done(years, days, seconds, curr_years, curr_days, curr_secs)){
-#ifndef HWACCL
+#if NUM_PROCESSORS < 2
 		calculate_force (root, root);
 #else
 		force_calc_threads_start();
@@ -272,9 +248,5 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim){
 	}
 	free (heapbuf);
 	run_simulation (years, days, seconds, the_tree, anim);
-	printf ("number of particles remaining: %d\n", the_tree->total_particles);
-	check_constraints (the_tree, 0, 0);
-	printf("direct sum: %llu, %llu\ngroup: %llu, %llu\nsum_ilst: %llu\n",
-			direct_sum_total_len, direct_sum_times, group_sum_total_len, group_times, sum_ilist_count);
 }
 

@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-static uint16_t elements_per_write;
+static uint16_t elements_per_write = 200;
 static char* bytebuffers [NUM_PROCESSORS];
 static uint16_t next_tid = 0;
 float* buffers [NUM_PROCESSORS];
@@ -23,16 +23,16 @@ static const char* reading_streams[NUM_PROCESSORS][NUM_PIPELINES_PER_CPU]
 = {{"cpu0_ifile0", "cpu0_ifile1"}, {"cpu1_ifile0", "cpu1_ifile1"}};
 
 void open_streams (uint16_t tid){
-	tcb_t tcb __attribute__ ((unused)) = threads [tid];
+	tcb_t* tcb  = &threads [tid];
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		tcb.streams [i] = open (writing_streams [tid][i], O_WRONLY);
-		tcb.reading_streams [i] = open 
+		tcb->streams [i] = open (writing_streams [tid][i], O_WRONLY);
+		tcb->reading_streams [i] = open 
 			(reading_streams[tid][i], O_RDONLY);
 	}	
 }
 
-void hwaccl_init (uint16_t num){
-	elements_per_write = num;
+void hwaccl_init (void){
+
 	for (int i = 0; i < NUM_PROCESSORS; ++i){
 		bytebuffers [i] =  malloc (sizeof (char) * RAMBUFF_SIZE);
 		buffers [i] = (float*)bytebuffers [i];
@@ -43,22 +43,23 @@ void hwaccl_init (uint16_t num){
 
 
 void write_target (uint16_t tid, pmass_t* tgt){
-	tcb_t tcb = threads [tid];
+	open_streams (tid);
+	tcb_t* tcb = &threads [tid];
 	float buff[4] = {tgt->pos.x, tgt->pos.y, tgt->pos.z, tgt->mass};
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
 		size_t len = 4 * sizeof (float);
-		ssize_t written = write (tcb.streams[i],buff, len);
+		ssize_t written = write (tcb->streams[i],buff, len);
 		assert(written == len);
 	}
 }
 //THIS IS A BLOCKING OPERATION
 vector_t read_result (uint16_t tid){
 	float floatbuf [3];
-	tcb_t tcb = threads [tid];
+	tcb_t* tcb = &threads [tid];
 	vector_t partial_force = {0,0,0};
 	vector_t increment;
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		int fd = tcb.reading_streams [i];
+		int fd = tcb->reading_streams [i];
 		ssize_t bytesread = read (fd, floatbuf,3 * sizeof(float)); 
 		if (bytesread != 3 * sizeof(float)){
 			char* bytes = (char*)floatbuf;
@@ -77,7 +78,7 @@ vector_t read_result (uint16_t tid){
 
 
 static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
-	tcb_t tcb = threads [tid];	
+	tcb_t* tcb = &threads [tid];	
 	float* buffer = buffers[tid];
 	if (!force_flush){
 		int floatindex = currindexes[tid] * 4;		
@@ -89,13 +90,16 @@ static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
 	}
 	if (force_flush || currindexes [tid] == elements_per_write){
 		//flush
-		int stream_to_use = tcb. stream_index;
-		int fd = tcb.streams [stream_to_use];
+		int stream_to_use = tcb-> stream_index;
+		int fd = tcb->streams [stream_to_use];
 		stream_to_use = (stream_to_use + 1) % NUM_PIPELINES_PER_CPU;
 		size_t len = currindexes[tid] * 4 * sizeof(float);
 		ssize_t written = write (fd, buffer, len);
 		assert (written == len);
 		currindexes [tid] = 0;
+		if (force_flush){
+			close_streams (tid);
+		}
 	}
 }
 
@@ -108,9 +112,14 @@ void flush_to_dma (uint16_t tid){
 }
 
 void close_streams (uint16_t tid){
-	tcb_t tcb = threads [tid];
+	tcb_t* tcb = &threads [tid];
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		close (tcb.streams [i]);
-		close (tcb.reading_streams [i]);
+		close (tcb->streams [i]);
+		close (tcb->reading_streams [i]);
 	}
+}
+
+//not threadsafe; call in serial code only
+void update_ilist_len (size_t newlen){
+	elements_per_write = newlen / 10;
 }

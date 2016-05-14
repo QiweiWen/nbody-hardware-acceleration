@@ -10,24 +10,21 @@
 
 #ifdef HWACCL
 #include "hwaccl.h"
+#endif
 #include <semaphore.h>
 #include <sys/sem.h>
 #include <pthread.h>
-#endif
+
 
 #define IS_PARTICLE 1
 #define IS_COM      2
-#ifdef HWACCL
+#if NUM_PROCESSORS > 1
 
 extern pthread_t ilist_threads [NUM_PROCESSORS];
-extern pthread_t summation_threads [NUM_PROCESSORS];
-extern pthread_mutex_t tree_biglock;
 //thread waits on "control" to start execution
 //main thread waits on "result" for end of computation
 extern sem_t     ilist_thread_control[NUM_PROCESSORS];
 extern sem_t     ilist_thread_result [NUM_PROCESSORS];
-extern sem_t     summation_thread_control[NUM_PROCESSORS];
-extern sem_t     summation_thread_result [NUM_PROCESSORS];
 
 #endif
 
@@ -109,16 +106,8 @@ static int make_interaction_list (int barnes_hut, otree_t* currnode,
 	return res;
 }
 
-uint64_t direct_sum_times = 0;
-uint64_t direct_sum_total_len = 0;
-
-uint64_t group_times = 0;
-uint64_t group_sum_total_len = 0;
-
-uint64_t sum_ilist_count = 0;
-
 static void __attribute__ ((noinline)) sum_interaction_list (otree_t* node, List ilist)  {
-	++sum_ilist_count;
+
 	List head = ilist;
 	pmass_t* part;
 	point_t  force;
@@ -172,8 +161,6 @@ static void direct_sum (otree_t* node){
 	//make a global ilist
 	List ilist = NULL;
 	int list_is_empty = 1;
-	direct_sum_times += 1;
-	direct_sum_total_len += make_interaction_list (0, node, NULL, &ilist, &list_is_empty);
 	if (!list_is_empty){
 		direct_sum_force (node, node, ilist);
 	}
@@ -186,10 +173,8 @@ void calculate_force (otree_t* root,otree_t* node){
 	if (node->total_particles < GROUP_SIZE){
 		List ilist = NULL;
 		int list_is_empty = 1;
-		group_times += 1;
-		int ridiculous = make_interaction_list (1, root, node, &ilist,&list_is_empty);
-		group_sum_total_len += ridiculous;
-			
+		
+		 make_interaction_list (1, root, node, &ilist,&list_is_empty);		
 		//sum force
 		if (!list_is_empty){
 			sum_interaction_list (node, ilist);
@@ -205,7 +190,7 @@ void calculate_force (otree_t* root,otree_t* node){
 	}	
 }
 
-#ifdef HWACCL
+#if NUM_PROCESSORS > 1
 void hwaccl_calculate_force (uint16_t tid, otree_t* root){
 	int num = 8 / NUM_PROCESSORS;	
 	int start = tid* num;
