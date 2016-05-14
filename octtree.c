@@ -191,12 +191,12 @@ otree_t* otree_relocate (otree_t* tree, dlnode_t* particle){
 		}else{
 			tree->total_particles--;
 			tree->num_particles --;	
+			dllist_delete_node (tree->particles, particle, 0, NULL);
 			if (tree->parent == NULL){
 				free (particle->key);
 				free (particle);
 			   	return NULL;
 			}
-			dllist_delete_node (tree->particles, particle, 0, NULL);
 			return otree_relocate (tree->parent,particle);
 		}
 	}else{
