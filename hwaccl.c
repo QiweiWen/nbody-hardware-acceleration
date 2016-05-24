@@ -60,16 +60,32 @@ vector_t read_result (uint16_t tid){
 	tcb_t* tcb = &threads [tid];
 	vector_t partial_force = {0,0,0};
 	vector_t increment;
+	ssize_t bytes_left;
+	ssize_t bytes_read;
+	ssize_t total_read;
+	char* buffer_pointer;
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
 		int fd = tcb->reading_streams [i];
-		ssize_t bytesread = read (fd, floatbuf,3 * sizeof(float)); 
-		if (bytesread != 3 * sizeof(float)){
-			char* bytes = (char*)floatbuf;
-			printf ("something went wrong, only %d bytes read\n", bytesread);
-			for (int i = 0; i < bytesread; ++i){
-				printf ("%d\n", bytes[i]);
+		bytes_left = 3* sizeof(float);
+		buffer_pointer = (char*)floatbuf;
+		total_read = 0;
+		while (bytes_left){
+			bytes_read = read (fd, buffer_pointer,bytes_left); 
+			if (bytes_read < 0) {
+				assert (!"error while reading\n");
+			}else{
+				bytes_left -= bytes_read;
+				buffer_pointer += bytes_read;
+				total_read += bytes_read;
 			}
-			assert(!"fix the hardware");
+		}
+		if (total_read < 3* sizeof(float)){
+			printf ("something went wrong, only %d bytes read\n", total_read);
+			char* bytes = (char*)floatbuf;
+			for (int i = 0; i < total_read; ++i){
+				printf ("%02x\n", bytes[i]);
+			}
+			assert (!"fix the hardware");
 		}
 		increment = 
 			(vector_t) {.x = floatbuf[0], .y = floatbuf [1], .z = floatbuf[2]};
@@ -82,6 +98,7 @@ vector_t read_result (uint16_t tid){
 static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
 	tcb_t* tcb = &threads [tid];	
 	float* buffer = buffers[tid];
+	
 	if (!force_flush){
 		int floatindex = currindexes[tid] * 4;		
 		buffer [floatindex++] = part->pos.x;
@@ -103,7 +120,7 @@ static void add_to_buffer_custom (uint16_t tid, pmass_t* part, int force_flush){
 		
 		assert (written == len);
 		currindexes [tid] = 0;
-		if (force_flush){
+		if (force_flush){	
 			//flush from dma buffers downstream
 			close_streams (tid, 0, 1);
 		}
@@ -120,9 +137,12 @@ void flush_to_dma (uint16_t tid){
 
 void close_streams (uint16_t tid, int reading, int writing){
 	tcb_t* tcb = &threads [tid];
+	float zerobuf[4] = {0};
 	for (int i = 0; i < NUM_PIPELINES_PER_CPU; ++i){
-		if (writing) 
+		if (writing){
+			write (tcb->streams [i], zerobuf, sizeof(float) * 4);
 			close (tcb->streams [i]);
+		}
 		if (reading) 
 			close (tcb->reading_streams [i]);
 	}
