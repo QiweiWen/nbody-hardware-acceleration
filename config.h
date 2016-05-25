@@ -1,14 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 #include <stdio.h>
-//#define USE_DOUBLE
+
 #define NUM_PROCESSORS 1
 #define HWACCL
-#ifdef HWACCL
-	#ifdef USE_DOUBLE
-		#error "use single precision for hwaccl"
-	#endif
-#endif
 
 //#define DEBUG
 #define ANIM

@@ -5,7 +5,7 @@
 #include "dllist.h"
 typedef struct otree{
 	pmass_t centre_of_mass;
-	floating_point side_len;
+	float side_len;
 	//the corner with the lowest values of x y and z
 	point_t corner;
 	int num_particles;
@@ -17,7 +17,7 @@ typedef struct otree{
 }otree_t;
 
 //create an empty root node
-otree_t* otree_new(floating_point side_len);
+otree_t* otree_new(float side_len);
 //free up the memory taken by the tree
 void otree_free (otree_t* tree);
 //insert a node

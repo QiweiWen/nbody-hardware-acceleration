@@ -152,7 +152,7 @@ static void integrate (otree_t* node, int years, int days, int seconds, int dump
 		curr = node->particles->first;
 		while (dump && curr){				
 			the_particle = (pmass_t*)curr->key;
-			fprintf (ofile, "(%.10lf, %.10lf, %.10lf)\n", 
+			fprintf (ofile, "(%.10f, %.10f, %.10f)\n", 
 						the_particle->pos.x, the_particle->pos.y, the_particle->pos.z);
 
 			curr = curr->next;
@@ -174,7 +174,7 @@ static void run_simulation (int years, int days, int seconds, otree_t* root, int
 #ifdef ANIM
 	if (anim){
 		ofile = fopen ("simfile", "w");
-		fprintf (ofile, "%lf\n", root->side_len);
+		fprintf (ofile, "%.10f\n", root->side_len);
 	}	
 #endif
 #ifdef HWACCL
@@ -247,18 +247,18 @@ void simulation (int years, int days, int seconds,FILE* infile, int anim, int lo
 	int charread = 0;
 	int linenum = 0;
 
-	floating_point universe_size = 0;	
+	float universe_size = 0;	
 	pmass_t* particle;
 
 	while ((charread = getline (&heapbuf, &len, infile)) != -1){
 		if (linenum == 0){
-			sscanf (heapbuf,FFMT,&universe_size);
+			sscanf (heapbuf,"%f",&universe_size);
 			the_tree = otree_new (universe_size);
 			
 		}else{		
 			particle = malloc (sizeof(pmass_t));
 			
-			sscanf (heapbuf, "("FFMT"," FFMT"," FFMT"," FFMT")",
+			sscanf (heapbuf, "(""%f""," "%f""," "%f""," "%f"")",
 					&particle->pos.x, &particle->pos.y,
 					&particle->pos.z, &particle->mass);	
 			assert (particle->mass >= MIN_MASS);	

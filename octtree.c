@@ -62,7 +62,7 @@ static point_t get_corner (otree_t* node, char index){
 static void otree_split (otree_t* node){
 	for (int i = 0; i < 8; ++i){
 		assert(node->children[i] == NULL);
-		node->children[i] = otree_new((floating_point)(node->side_len/2));
+		node->children[i] = otree_new((float)(node->side_len/2));
 		node->children[i]->parent = node;
 		node->children[i]->corner = get_corner (node, i);
 	}
@@ -91,8 +91,8 @@ static void otree_collapse(otree_t* node){
 	//all these asserts:
 	//if these invariants break then we should
 	//fail noisily instead of silently
-	dbprintf("collapsing %16lx\n", (unsigned long)node);
-	dbprintf ("corner (%lf, %lf, %lf), com (%lf, %lf, %lf), %lf kg\n", 
+	dbprintf("collapsing %lx\n", (unsigned long)node);
+	dbprintf ("corner (%f, %f, %f), com (%f, %f, %f), %f kg\n", 
 			node->corner.x, node->corner.y, node->corner.z,
 			node->centre_of_mass.pos.x, node->centre_of_mass.pos.y,node->centre_of_mass.pos.z, node->centre_of_mass.mass);
 	assert (node->total_particles <= OTREE_NODE_CAP);
@@ -117,7 +117,7 @@ static void otree_collapse(otree_t* node){
 
 }
 
-otree_t* otree_new(floating_point side_len){
+otree_t* otree_new(float side_len){
 	otree_t* new_tree = (otree_t*)malloc(sizeof(otree_t));
 	*new_tree = (otree_t){.centre_of_mass = (pmass_t){.mass = 0.0},
 						  .side_len = side_len,
@@ -135,7 +135,7 @@ otree_t* otree_insert (otree_t* tree, dlnode_t* lnk, pmass_t* particle, int cal_
 	
 	assert (!out_of_bound(tree, &particle->pos));	
 	if (cal_com){
-		if (tree->centre_of_mass.mass == (floating_point)0){
+		if (tree->centre_of_mass.mass == (float)0){
 			tree->centre_of_mass = *particle;
 		}else{
 			tree->centre_of_mass = centre_of_mass (&tree->centre_of_mass, 
@@ -251,7 +251,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 	otree_t* node_ptr = src;
 	pmass_t adj_mass = *old_part;
 	adj_mass. mass *= -1;	
-	floating_point mass_diff;
+	float mass_diff;
 	for (;node_ptr != NULL;){
 		
 		mass_diff = ABS(node_ptr->centre_of_mass.mass - old_part->mass);
@@ -288,7 +288,7 @@ void otree_fix_com (otree_t* src, otree_t* dst, pmass_t* old_part,
 //in case we missed something
 void check_constraints (otree_t* tree, int check_mass, int garbage_free){
 	int is_leaf = (tree->children[0] == NULL);	
-	floating_point mass = 0;
+	float mass = 0;
 	if (check_mass){
 		if (tree->centre_of_mass.mass >= MIN_MASS){
 			assert (tree->centre_of_mass.pos.x >= 0);	

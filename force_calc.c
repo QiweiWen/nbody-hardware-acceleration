@@ -52,7 +52,7 @@ static inline int far_far_away(otree_t* node, otree_t* target){
 	if (!z_res){
 		tmp.z += node->side_len;
 	}
-	floating_point width = target->side_len,
+	float width = target->side_len,
 				   dist  = sqrt(dist_between_points_sqrd(
 							   &tmp, &target->centre_of_mass.pos));
 	return (width/dist <= BH_THETA);
