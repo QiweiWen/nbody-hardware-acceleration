@@ -9,6 +9,7 @@ make clean to delete object files
 ==========================
 edit config.h, make clean, make
 
+
 3. how to use
 =========================
 compile geninput.c
@@ -23,3 +24,4 @@ replace the bitstream in the Xillybus demo bundle with accelerator.bit
 edit config.h, enable "HWACCL"
 make
 run
+NOTE:::NUM_PROCESSORS > 1 working for pure CPU simulation only; there is only one accelerator implemented in the FPGA, and concurrent writing to the same Xillybus stream isn't tested. Use at your own peril
