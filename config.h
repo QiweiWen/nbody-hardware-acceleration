@@ -9,7 +9,7 @@
 #define ANIM
 #define TIMESTEP "0y10d0s"
 
-#define OTREE_NODE_CAP 60
+#define OTREE_NODE_CAP 445
 #define CYCLES_PER_GARBAGE_COLLECT 10
 #define CYCLES_PER_WRITE 1
 
