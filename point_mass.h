@@ -56,15 +56,17 @@ static inline void vector_scalar_div (point_t* vec, float scale){
 }
 
 static inline void vector_gravity (pmass_t* acted, pmass_t* object, point_t* res){
-	res->x = object->pos.x - acted->pos.x,
-	res->y = object->pos.y - acted->pos.y,
-	res->z = object->pos.z - acted->pos.z;
-
-	float scalar_acceleration = acceleration_on_particle (acted, object);
-	float mag = sqrt (res->x * res->x + res->y * res->y + res->z * res->z);
-	
-	vector_scalar_div (res, mag);
-	vector_scalar_mult(res,scalar_acceleration);
+	//to replicate what the FPGA does as much as possible
+	float dx = object->pos.x - acted->pos.x;
+	float dy = object->pos.y - acted->pos.y;
+	float dz = object->pos.z - acted->pos.z;
+	float r2 = dx*dx + dy*dy + dz*dz;
+	float r  = sqrt (r2);
+	float r3 = r2 * r;
+	float GM_by_r3 = NEWTON_CONSTANT * object->mass / r3;
+    res->x = GM_by_r3 * dx;
+	res->y = GM_by_r3 * dy;
+	res->z = GM_by_r3 * dz;	
 }
 
 static inline void vector_add (point_t* res, point_t* other){

@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #define NUM_PROCESSORS 1
-#define HWACCL
+//#define HWACCL
 
 //#define DEBUG
 #define ANIM
